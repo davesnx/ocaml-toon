@@ -7,16 +7,7 @@ let check_roundtrip msg json =
   match Toon.parse encoded with
   | Ok decoded -> check_json msg json decoded
   | Error err ->
-      let msg_str =
-        match err with
-        | `Unterminated_quoted_string -> "Unterminated quoted string"
-        | `Expected_quote -> "Expected quote"
-        | `Invalid_escape_sequence -> "Invalid escape sequence"
-        | `No_colon_in_line line -> "No colon in line: " ^ line
-        | `Invalid_array_syntax -> "Invalid array syntax"
-        | `Array_length_mismatch -> "Array length mismatch"
-        | `Invalid_number_format -> "Invalid number format"
-      in
+      let msg_str = Toon.error_to_string err in
       Alcotest.fail msg_str
 
 let test () =

@@ -9,6 +9,15 @@ type error =
 
 type line_info = { content : string; indent : int }
 
+let error_to_string = function
+  | `Unterminated_quoted_string -> "Unterminated quoted string"
+  | `Expected_quote -> "Expected quote"
+  | `Invalid_escape_sequence -> "Invalid escape sequence"
+  | `No_colon_in_line line -> "No colon in line: " ^ line
+  | `Invalid_array_syntax -> "Invalid array syntax"
+  | `Array_length_mismatch -> "Array length mismatch"
+  | `Invalid_number_format -> "Invalid number format"
+
 let get_indent line =
   let rec count i =
     if i >= String.length line then i
