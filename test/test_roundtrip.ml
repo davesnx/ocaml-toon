@@ -9,7 +9,8 @@ let check_roundtrip msg json =
   let encoded = Toon.print json in
   match Toon.parse encoded with
   | Ok decoded -> check_json msg json decoded
-  | Error `Unterminated_quoted_string -> Alcotest.fail "Unterminated quoted string"
+  | Error `Unterminated_quoted_string ->
+      Alcotest.fail "Unterminated quoted string"
   | Error `Expected_quote -> Alcotest.fail "Expected quote"
   | Error `Invalid_escape_sequence -> Alcotest.fail "Invalid escape sequence"
   | Error (`No_colon_in_line line) -> Alcotest.fail ("No colon in line: " ^ line)

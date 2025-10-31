@@ -283,22 +283,36 @@ and parse_list_items lines expected_indent =
           | Ok (value, _) -> loop (value :: acc) rest_after
           | Error e -> Error e
         else if String.length item_content > 0 && item_content.[0] = '[' then
-          let bracket_end = try String.index item_content ']' with Not_found -> -1 in
-          if bracket_end > 0 && bracket_end + 1 < String.length item_content && item_content.[bracket_end + 1] = ':' then
-            let len_str = String.sub item_content 1 (bracket_end - 1) |> String.trim in
-            let len_str = if String.length len_str > 0 && len_str.[0] = '#' then
-              String.sub len_str 1 (String.length len_str - 1) |> String.trim
-            else len_str in
+          let bracket_end =
+            try String.index item_content ']' with Not_found -> -1
+          in
+          if
+            bracket_end > 0
+            && bracket_end + 1 < String.length item_content
+            && item_content.[bracket_end + 1] = ':'
+          then
+            let len_str =
+              String.sub item_content 1 (bracket_end - 1) |> String.trim
+            in
+            let len_str =
+              if String.length len_str > 0 && len_str.[0] = '#' then
+                String.sub len_str 1 (String.length len_str - 1) |> String.trim
+              else len_str
+            in
             let _len = try int_of_string len_str with _ -> 0 in
-            let after_colon = String.sub item_content (bracket_end + 2) (String.length item_content - bracket_end - 2) |> String.trim in
+            let after_colon =
+              String.sub item_content (bracket_end + 2)
+                (String.length item_content - bracket_end - 2)
+              |> String.trim
+            in
             let items = split_by_comma after_colon in
-            (match parse_primitives items with
+            match parse_primitives items with
             | Ok parsed -> loop (`List parsed :: acc) rest_after
-            | Error e -> Error e)
+            | Error e -> Error e
           else
-            (match parse_value_from_string item_content with
+            match parse_value_from_string item_content with
             | Ok value -> loop (value :: acc) rest_after
-            | Error e -> Error e)
+            | Error e -> Error e
         else if String.contains item_content ':' || item_lines <> [] then
           let all_item_lines =
             if item_content <> "" then
@@ -337,20 +351,33 @@ let parse input =
       let colon_idx = String.index_from input bracket_end ':' in
       let rest_of_first_line =
         if colon_idx + 1 < String.length input then
-          let rest = String.sub input (colon_idx + 1) (String.length input - colon_idx - 1) in
-          let newline_idx = try String.index rest '\n' with Not_found -> String.length rest in
+          let rest =
+            String.sub input (colon_idx + 1)
+              (String.length input - colon_idx - 1)
+          in
+          let newline_idx =
+            try String.index rest '\n' with Not_found -> String.length rest
+          in
           String.sub rest 0 newline_idx |> String.trim
         else ""
       in
 
       if rest_of_first_line = "" && String.contains input '\n' then
         let after_first_line_idx = String.index input '\n' + 1 in
-        let rest_input = String.sub input after_first_line_idx (String.length input - after_first_line_idx) in
+        let rest_input =
+          String.sub input after_first_line_idx
+            (String.length input - after_first_line_idx)
+        in
         let item_lines = parse_lines rest_input in
-        if item_lines <> [] && List.exists (fun line -> String.starts_with ~prefix:"- " line.content) item_lines then
-          (match parse_list_items item_lines 2 with
+        if
+          item_lines <> []
+          && List.exists
+               (fun line -> String.starts_with ~prefix:"- " line.content)
+               item_lines
+        then
+          match parse_list_items item_lines 2 with
           | Ok (items, _) -> Ok (`List items)
-          | Error e -> Error e)
+          | Error e -> Error e
         else Ok (`List [])
       else if rest_of_first_line = "" then Ok (`List [])
       else if not (String.contains rest_of_first_line '\n') then

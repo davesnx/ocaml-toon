@@ -1,12 +1,11 @@
-type error = [
-  | `Unterminated_quoted_string
+type error =
+  [ `Unterminated_quoted_string
   | `Expected_quote
   | `Invalid_escape_sequence
   | `No_colon_in_line of string
   | `Invalid_array_syntax
   | `Array_length_mismatch
-  | `Invalid_number_format
-]
+  | `Invalid_number_format ]
 
 val error_to_string : error -> string
 (** Convert an error to a string *)

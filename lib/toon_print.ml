@@ -84,7 +84,7 @@ let print_primitive = function
   | `String s -> print_quoted_string s
   | `Int i -> string_of_int i
   | `Float f ->
-      if f = 0.0 && (1.0 /. f) < 0.0 then "0"
+      if f = 0.0 && 1.0 /. f < 0.0 then "0"
       else
         let s = string_of_float f in
         if String.ends_with ~suffix:"." s then s ^ "0" else s
