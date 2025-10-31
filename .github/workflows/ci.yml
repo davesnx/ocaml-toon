@@ -16,6 +16,8 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
+          # - windows-latest
+          # The Dune Developer Preview does not currently support MINGW64_NT-10.0-26100 x86_64.
         ocaml-compiler:
           - 5.4.0
 
