@@ -28,18 +28,10 @@ jobs:
       - name: Use dune
         uses: ocaml-dune/setup-dune@v1
 
-      - name: Restore dune cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.cache/dune
-          key: dune-${{ matrix.os }}-${{ hashFiles('dune.lock/*.pkg') }}
-          restore-keys: |
-            dune-${{ matrix.os }}-
-
-      - name: Lock dependencies with dune pkg
+      - name: Lock dependencies
         run: dune pkg lock
 
-      - name: Build with dune pkg
+      - name: Build
         run: dune build
 
       - name: Run tests
@@ -47,10 +39,3 @@ jobs:
 
       - name: Check code formatting
         run: dune build @fmt
-
-      - name: Save dune cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.cache/dune
-          key: dune-${{ matrix.os }}-${{ hashFiles('dune.lock/*.pkg') }}
