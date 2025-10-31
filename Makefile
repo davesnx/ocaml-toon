@@ -32,10 +32,6 @@ test: ## Run the unit tests
 test-watch: ## Run the unit tests in watch mode
 	@dune runtest -w
 
-.PHONY: test-promote
-test-promote: ## Updates snapshots and promotes it to correct
-	@dune runtest --auto-promote
-
 .PHONY: format
 format: ## Format the codebase with ocamlformat
 	@dune build @fmt --auto-promote

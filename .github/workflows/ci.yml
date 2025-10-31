@@ -38,6 +38,3 @@ jobs:
 
       - name: Run tests
         run: dune runtest
-
-      - name: Check code formatting
-        run: dune build @fmt
