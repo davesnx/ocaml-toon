@@ -1,0 +1,19 @@
+(version 0.2.0)
+
+(build
+ (all_platforms
+  ((action
+    (progn
+     (when %{pkg-self:dev} (run dune subst))
+     (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
+
+(depends
+ (all_platforms
+  (dune ocaml fpath re ppx_deriving testo-diff)))
+
+(source
+ (fetch
+  (url
+   https://github.com/semgrep/testo/releases/download/0.2.0/testo-0.2.0.tbz)
+  (checksum
+   sha256=0998766656d9a756f87c2f6c78b803d3a6e7c1230167c039f288226428cc3137)))

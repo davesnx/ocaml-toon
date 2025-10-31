@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+        ocaml-compiler:
+          - 5.4.0
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use dune
+        uses: ocaml-dune/setup-dune@v1
+
+      - name: Lock dependencies with dune pkg
+        run: dune pkg lock
+
+      - name: Build with dune pkg
+        run: dune build
+
+      - name: Run tests
+        run: dune runtest

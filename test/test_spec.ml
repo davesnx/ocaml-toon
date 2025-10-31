@@ -1,0 +1,48 @@
+let check_json msg expected actual =
+  Alcotest.(check (testable Yojson.Basic.pp Yojson.Basic.equal))
+    msg expected actual
+
+let check_roundtrip msg json =
+  let encoded = Toon.print json in
+  match Toon.parse encoded with
+  | Ok decoded -> check_json msg json decoded
+  | Error err ->
+      let msg_str =
+        match err with
+        | `Unterminated_quoted_string -> "Unterminated quoted string"
+        | `Expected_quote -> "Expected quote"
+        | `Invalid_escape_sequence -> "Invalid escape sequence"
+        | `No_colon_in_line line -> "No colon in line: " ^ line
+        | `Invalid_array_syntax -> "Invalid array syntax"
+        | `Array_length_mismatch -> "Array length mismatch"
+        | `Invalid_number_format -> "Invalid number format"
+      in
+      Alcotest.fail msg_str
+
+let test () =
+  [
+    Testo.create "arrays of arrays (primitives)" (fun () ->
+        let json =
+          `Assoc
+            [
+              ( "pairs",
+                `List [ `List [ `Int 1; `Int 2 ]; `List [ `Int 3; `Int 4 ] ] );
+            ]
+        in
+        check_roundtrip "arrays of arrays" json);
+    Testo.create "root arrays of arrays" (fun () ->
+        let json = `List [ `List [ `Int 1; `Int 2 ]; `List [] ] in
+        check_roundtrip "root arrays of arrays" json);
+    Testo.create "-0 normalization" (fun () ->
+        let json = `Assoc [ ("zero", `Float (-0.0)) ] in
+        let encoded = Toon.print json in
+        Alcotest.(check string) "zero" "zero: 0" encoded);
+    Testo.create "hyphen quoting" (fun () ->
+        let json = `Assoc [ ("value", `String "-") ] in
+        let encoded = Toon.print json in
+        Alcotest.(check bool) "quotes hyphen" true (String.contains encoded '"'));
+    Testo.create "strings starting with hyphen" (fun () ->
+        let json = `Assoc [ ("value", `String "-test") ] in
+        let encoded = Toon.print json in
+        Alcotest.(check bool) "quotes -test" true (String.contains encoded '"'));
+  ]
