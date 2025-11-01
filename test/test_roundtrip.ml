@@ -79,7 +79,7 @@ module String_quoting = struct
           check_string "mixed" "hello 👋 world"
             (Toon.print (`String "hello 👋 world")));
       Testo.create "roundtrip unicode" (fun () ->
-          let json =
+          let json : Yojson.Basic.t =
             `Assoc
               [
                 ("emoji", `String "😀🎉🦀");
@@ -96,7 +96,7 @@ module Objects = struct
   let test () =
     [
       Testo.create "preserves key order in objects" (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ("id", `Int 123); ("name", `String "Ada"); ("active", `Bool true);
@@ -105,7 +105,9 @@ module Objects = struct
           check_string "key order" "id: 123\nname: Ada\nactive: true"
             (Toon.print obj));
       Testo.create "encodes null values in objects" (fun () ->
-          let obj = `Assoc [ ("id", `Int 123); ("value", `Null) ] in
+          let obj : Yojson.Basic.t =
+            `Assoc [ ("id", `Int 123); ("value", `Null) ]
+          in
           check_string "null value" "id: 123\nvalue: null" (Toon.print obj));
       Testo.create "encodes empty objects as empty string" (fun () ->
           check_string "empty object" "" (Toon.print (`Assoc [])));
@@ -152,7 +154,7 @@ module Objects = struct
           check_string "space" {|text: " "|}
             (Toon.print (`Assoc [ ("text", `String " ") ])));
       Testo.create "encodes deeply nested objects" (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc [ ("a", `Assoc [ ("b", `Assoc [ ("c", `String "deep") ]) ]) ]
           in
           check_string "nested" "a:\n  b:\n    c: deep" (Toon.print obj));
@@ -163,7 +165,7 @@ module Objects = struct
           check_roundtrip "nested"
             (`Assoc [ ("nested", `Assoc [ ("key", `String "value") ]) ]));
       Testo.create "roundtrip deeply nested - 3 levels" (fun () ->
-          let json =
+          let json : Yojson.Basic.t =
             `Assoc
               [
                 ( "level1",
@@ -184,15 +186,17 @@ module Arrays = struct
   let test () =
     [
       Testo.create "encodes string arrays inline" (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc [ ("tags", `List [ `String "reading"; `String "gaming" ]) ]
           in
           check_string "tags" "tags[2]: reading,gaming" (Toon.print obj));
       Testo.create "encodes number arrays inline" (fun () ->
-          let obj = `Assoc [ ("nums", `List [ `Int 1; `Int 2; `Int 3 ]) ] in
+          let obj : Yojson.Basic.t =
+            `Assoc [ ("nums", `List [ `Int 1; `Int 2; `Int 3 ]) ]
+          in
           check_string "nums" "nums[3]: 1,2,3" (Toon.print obj));
       Testo.create "encodes mixed primitive arrays inline" (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ("data", `List [ `String "x"; `String "y"; `Bool true; `Int 10 ]);
@@ -200,27 +204,31 @@ module Arrays = struct
           in
           check_string "mixed" "data[4]: x,y,true,10" (Toon.print obj));
       Testo.create "encodes empty arrays" (fun () ->
-          let obj = `Assoc [ ("items", `List []) ] in
+          let obj : Yojson.Basic.t = `Assoc [ ("items", `List []) ] in
           check_string "empty" "items[0]:" (Toon.print obj));
       Testo.create "handles empty string in arrays" (fun () ->
-          let obj = `Assoc [ ("items", `List [ `String "" ]) ] in
+          let obj : Yojson.Basic.t =
+            `Assoc [ ("items", `List [ `String "" ]) ]
+          in
           check_string "one empty" {|items[1]: ""|} (Toon.print obj);
-          let obj2 =
+          let obj2 : Yojson.Basic.t =
             `Assoc [ ("items", `List [ `String "a"; `String ""; `String "b" ]) ]
           in
           check_string "with empties" {|items[3]: a,"",b|} (Toon.print obj2));
       Testo.create "handles whitespace-only strings in arrays" (fun () ->
-          let obj = `Assoc [ ("items", `List [ `String " "; `String " " ]) ] in
+          let obj : Yojson.Basic.t =
+            `Assoc [ ("items", `List [ `String " "; `String " " ]) ]
+          in
           check_string "spaces" {|items[2]: " "," "|} (Toon.print obj));
       Testo.create "quotes array strings with special characters" (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [ ("items", `List [ `String "a"; `String "b,c"; `String "d:e" ]) ]
           in
           check_string "special" {|items[3]: a,"b,c","d:e"|} (Toon.print obj));
       Testo.create "quotes strings that look like booleans/numbers in arrays"
         (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ( "items",
@@ -234,7 +242,7 @@ module Arrays = struct
             (Toon.print obj));
       Testo.create "quotes strings with structural meanings in arrays"
         (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ( "items",
@@ -247,7 +255,7 @@ module Arrays = struct
           check_roundtrip "nums"
             (`Assoc [ ("array", `List [ `Int 1; `Int 2; `Int 3 ]) ]));
       Testo.create "roundtrip primitive arrays" (fun () ->
-          let json =
+          let json : Yojson.Basic.t =
             `Assoc
               [
                 ( "tags",
@@ -258,7 +266,7 @@ module Arrays = struct
           check_roundtrip "tags" json);
       Testo.create "roundtrip large primitive array" (fun () ->
           let numbers = List.init 1000 (fun i -> `Int i) in
-          let json = `Assoc [ ("numbers", `List numbers) ] in
+          let json : Yojson.Basic.t = `Assoc [ ("numbers", `List numbers) ] in
           check_roundtrip "1000 numbers" json);
       Testo.create "roundtrip mixed array" (fun () ->
           check_roundtrip "mixed"
@@ -270,7 +278,7 @@ module Arrays = struct
                  );
                ]));
       Testo.create "encodes arrays of primitives at root level" (fun () ->
-          let arr =
+          let arr : Yojson.Basic.t =
             `List
               [ `String "x"; `String "y"; `String "true"; `Bool true; `Int 10 ]
           in
@@ -289,7 +297,7 @@ module Tabular_arrays = struct
     [
       Testo.create "encodes arrays of similar objects in tabular format"
         (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ( "items",
@@ -314,7 +322,7 @@ module Tabular_arrays = struct
             "items[2]{sku,qty,price}:\n  A1,2,9.99\n  B2,1,14.5"
             (Toon.print obj));
       Testo.create "handles null values in tabular format" (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ( "items",
@@ -329,7 +337,7 @@ module Tabular_arrays = struct
             (Toon.print obj));
       Testo.create "quotes strings containing delimiters in tabular rows"
         (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ( "items",
@@ -356,7 +364,7 @@ module Tabular_arrays = struct
   B2,"wip: test",1|}
             (Toon.print obj));
       Testo.create "handles tabular arrays with keys needing quotes" (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ( "items",
@@ -376,7 +384,7 @@ module Tabular_arrays = struct
             (Toon.print obj));
       Testo.create "uses field order from first object for tabular headers"
         (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ( "items",
@@ -390,7 +398,7 @@ module Tabular_arrays = struct
           check_string "field order" "items[2]{a,b,c}:\n  1,2,3\n  10,20,30"
             (Toon.print obj));
       Testo.create "roundtrip tabular arrays - users" (fun () ->
-          let json =
+          let json : Yojson.Basic.t =
             `Assoc
               [
                 ( "users",
@@ -403,7 +411,7 @@ module Tabular_arrays = struct
           in
           check_roundtrip "users" json);
       Testo.create "roundtrip tabular arrays - products" (fun () ->
-          let json =
+          let json : Yojson.Basic.t =
             `Assoc
               [
                 ( "products",
@@ -428,7 +436,7 @@ module Tabular_arrays = struct
           in
           check_roundtrip "products" json);
       Testo.create "roundtrip tabular arrays - single item" (fun () ->
-          let json =
+          let json : Yojson.Basic.t =
             `Assoc
               [
                 ( "items",
@@ -448,7 +456,7 @@ module Tabular_arrays = struct
                     ("value", `Int (i * 2));
                   ])
           in
-          let json = `Assoc [ ("records", `List records) ] in
+          let json : Yojson.Basic.t = `Assoc [ ("records", `List records) ] in
           check_roundtrip "500 records" json);
       Testo.create "roundtrip array of objects" (fun () ->
           check_roundtrip "users"
@@ -469,7 +477,7 @@ module Complex_structures = struct
     [
       Testo.create "encodes objects with mixed arrays and nested objects"
         (fun () ->
-          let obj =
+          let obj : Yojson.Basic.t =
             `Assoc
               [
                 ( "user",

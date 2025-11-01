@@ -19,11 +19,11 @@ let test () =
         check_json "null" `Null (parse "null"));
     Testo.create "parses simple objects" (fun () ->
         let toon = "id: 123\nname: Ada" in
-        let expected = `Assoc [ ("id", `Int 123); ("name", `String "Ada") ] in
+        let expected : Yojson.Basic.t = `Assoc [ ("id", `Int 123); ("name", `String "Ada") ] in
         check_json "simple object" expected (parse toon));
     Testo.create "parses primitive arrays" (fun () ->
         let toon = "tags[3]: reading,gaming,coding" in
-        let expected =
+        let expected : Yojson.Basic.t =
           `Assoc
             [
               ( "tags",

@@ -12,10 +12,10 @@ let test () =
         check_string "false" "false" (Toon.print (`Bool false));
         check_string "null" "null" (Toon.print `Null));
     Testo.create "prints simple objects" (fun () ->
-        let obj = `Assoc [ ("id", `Int 123); ("name", `String "Ada") ] in
+        let obj : Yojson.Basic.t = `Assoc [ ("id", `Int 123); ("name", `String "Ada") ] in
         check_string "simple object" "id: 123\nname: Ada" (Toon.print obj));
     Testo.create "prints primitive arrays" (fun () ->
-        let obj =
+        let obj : Yojson.Basic.t =
           `Assoc
             [
               ( "tags",
@@ -26,7 +26,7 @@ let test () =
         check_string "primitive array" "tags[3]: reading,gaming,coding"
           (Toon.print obj));
     Testo.create "produces no trailing spaces at end of lines" (fun () ->
-        let obj =
+        let obj : Yojson.Basic.t =
           `Assoc
             [
               ("user", `Assoc [ ("id", `Int 123); ("name", `String "Ada") ]);
@@ -42,7 +42,7 @@ let test () =
               (not (String.ends_with ~suffix:" " line)))
           lines);
     Testo.create "produces no trailing newline at end of output" (fun () ->
-        let obj = `Assoc [ ("id", `Int 123) ] in
+        let obj : Yojson.Basic.t = `Assoc [ ("id", `Int 123) ] in
         let result = Toon.print obj in
         Alcotest.(check bool)
           "no trailing newline" true
