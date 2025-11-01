@@ -1,5 +1,6 @@
 let check_json msg expected actual =
-  Alcotest.(check (testable Yojson.Basic.pp Yojson.Basic.equal))
+  Alcotest.check
+    (Alcotest.testable Yojson.Basic.pp Yojson.Basic.equal)
     msg expected actual
 
 let check_roundtrip msg json =
