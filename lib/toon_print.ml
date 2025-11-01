@@ -21,7 +21,7 @@ let needs_quoting_for_key s =
     true
   else
     try
-      ignore (float_of_string s);
+      ignore (Float.of_string s);
       true
     with Failure _ -> false
 
@@ -47,7 +47,7 @@ let needs_quoting s =
     true
   else
     try
-      ignore (float_of_string s);
+      ignore (Float.of_string s);
       true
     with Failure _ -> false
 
