@@ -66,7 +66,7 @@ let parse_quoted_string s pos =
   else
     Error `Expected_quote
 
-let parse_primitive_value (s : string) =
+let parse_primitive (s : string) =
   match String.trim s with
   | "true" -> `Bool true
   | "false" -> `Bool false
@@ -113,14 +113,14 @@ let split_by_comma s =
     let buf = Buffer.create 16 in
     loop [] buf 0 ~in_quotes:false ~escaped:false |> List.map String.trim
 
-let parse_value_from_string s =
+let parse_value s =
   let s = String.trim s in
   if String.length s > 0 && s.[0] = '"' then
     match parse_quoted_string s 0 with
     | Ok (str, _) -> Ok (`String str)
     | Error e -> Error e
   else
-    Ok (parse_primitive_value s)
+    Ok (parse_primitive s)
 
 let strip_length_marker s =
   let s = String.trim s in
@@ -211,7 +211,7 @@ and parse_object_or_primitive key after_colon rest indent_level =
         | Error e -> Error e)
     | _ -> parse_remaining_fields key (`Assoc []) rest rest indent_level
   else
-    match parse_value_from_string after_colon with
+    match parse_value after_colon with
     | Ok value -> parse_remaining_fields key value rest rest indent_level
     | Error e -> Error e
 
@@ -302,7 +302,7 @@ and parse_inline_array_item (item_content : string) =
     | Ok parsed -> Ok (`List parsed)
     | Error e -> Error e
   else
-    parse_value_from_string item_content
+    parse_value item_content
 
 and parse_structured_item item_content item_lines ~expected_indent =
   let all_item_lines =
@@ -322,7 +322,7 @@ and parse_list_item content lines ~expected_indent =
       parse_inline_array_item content
   | s, _ when String.contains s ':' || lines <> [] ->
       parse_structured_item content lines ~expected_indent
-  | _ -> parse_value_from_string content
+  | _ -> parse_value content
 
 and parse_list_items lines ~expected_indent =
   let rec loop acc remaining =
@@ -351,7 +351,7 @@ and parse_primitives items =
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
     | s :: rest -> (
-        match parse_value_from_string s with
+        match parse_value s with
         | Ok v -> loop (v :: acc) rest
         | Error e -> Error e)
   in
@@ -386,20 +386,20 @@ let parse_array_with_list_items input =
       | Error e -> Error e)
   | _ -> Ok (`List [])
 
-let parse_array input =
+let parse_array (input : string) :
+    ( Yojson.Basic.t,
+      [> `Expected_quote
+      | `Invalid_array_syntax
+      | `No_colon_in_line of string
+      | `Unterminated_quoted_string ] )
+    result =
   try
     let bracket_end = String.index input ']' in
     let colon_idx = String.index_from input bracket_end ':' in
     let rest_of_first_line = extract_first_line_after_colon input colon_idx in
-
-    match (rest_of_first_line, String.contains input '\n') with
-    | "", true -> parse_array_with_list_items input
-    | "", false -> Ok (`List [])
-    | s, _ when not (String.contains s '\n') -> (
-        let items = split_by_comma rest_of_first_line in
-        match parse_primitives items with
-        | Ok parsed -> Ok (`List parsed)
-        | Error e -> Error e)
+    match rest_of_first_line with
+    | "" when String.contains input '\n' -> parse_array_with_list_items input
+    | "" -> Ok (`List [])
     | _ -> (
         let lines = parse_lines input in
         match parse_structure lines 0 with
@@ -414,7 +414,7 @@ let parse input =
   | input
     when (not (String.contains input ':')) && not (String.contains input '\n')
     ->
-      parse_value_from_string input
+      parse_value input
   | _ -> (
       let lines = parse_lines input in
       match parse_structure lines 0 with
