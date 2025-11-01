@@ -65,19 +65,20 @@ Pin the package in your `dune-project` and run `dune pkg lock` and `dune build`
 ## Quick Start
 
 ```ocaml
-open Yojson.Basic.Util
+let data = Yojson.Basic.from_string {|
+{
+  "user": {
+    "id": 123
+    "name": "Ada"
+    "tags": ["reading", "gaming"]
+    "active": true
+    "preferences": []
+  }
+}
+|}
 
-let data = `Assoc [
-  ("user", `Assoc [
-    ("id", `Int 123);
-    ("name", `String "Ada");
-    ("tags", `List [`String "reading"; `String "gaming"]);
-    ("active", `Bool true);
-    ("preferences", `List [])
-  ])
-]
-
-let () = print_endline (Toon.print data)
+let () =
+  print_endline (Toon.print data)
 (*
 user:
   id: 123
@@ -91,26 +92,28 @@ user:
 You can also decode TOON back to JSON values:
 
 ```ocaml
-let toon = {|user:
+let toon = {|
+user:
   id: 123
   name: Ada
   tags[2]: reading,gaming
   active: true
-  preferences[0]:|}
+  preferences[0]:
+|}
 
 let () =
   match Toon.parse toon with
   | Ok (value: Yojson.Basic.t) ->
       Printf.printf "%s\n" (Yojson.Basic.to_string value)
-  | Error err ->
-      Printf.eprintf "Parse error: %s\n" (Toon.error_to_string err)
+  | Error error ->
+      Printf.eprintf "Parse error: %s\n" (Toon.error_to_string error)
 ```
 
 ## API
 
 ### `Toon.parse : string -> (Yojson.Basic.t, Toon.error) result`
 
-Parses a TOON-formatted string into a Yojson value. Returns `Ok value` on success or `Error err` on parse failure.
+Parses a TOON-formatted string into a JSON value. Returns `Ok value` on success or `Error error` on parse failure.
 
 ```ocaml
 type error =
@@ -126,12 +129,12 @@ type error =
 ```ocaml
 match Toon.parse "tags[3]: a,b,c" with
 | Ok json -> Printf.printf "%s\n" (Yojson.Basic.to_string json)
-| Error err -> Printf.eprintf "Error: %s\n" (Toon.error_to_string err)
+| Error error -> Printf.eprintf "Error: %s\n" (Toon.error_to_string error)
 ```
 
 ### `Toon.print : Yojson.Basic.t -> string`
 
-Converts a Yojson value to TOON format. Returns a TOON-formatted string with no trailing newline or spaces.
+Converts a JSON value to TOON format. Returns a TOON-formatted string with no trailing newline or spaces.
 
 
 ```ocaml

@@ -10,7 +10,7 @@ type error =
 val error_to_string : error -> string
 (** Convert an error to a string *)
 
-val parse : string -> (Yojson.Basic.t, [> error ]) result
+val parse : string -> (Yojson.Basic.t, error) result
 (** Parse a TOON format string to a Yojson value *)
 
 val print : Yojson.Basic.t -> string
