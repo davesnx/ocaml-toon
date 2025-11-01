@@ -78,7 +78,6 @@ let data = `Assoc [
 ]
 
 let () = print_endline (Toon.print data)
-(* Output: *)
 (*
 user:
   id: 123
