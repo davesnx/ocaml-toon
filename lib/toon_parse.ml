@@ -283,14 +283,10 @@ and parse_inline_array_item (item_content : string) =
     && bracket_end + 1 < String.length item_content
     && item_content.[bracket_end + 1] = ':'
   then
-    let len_str =
-      String.sub item_content 1 (bracket_end - 1) |> strip_length_marker
-    in
-    let _len = try int_of_string len_str with _ -> 0 in
     let after_colon =
-      String.sub item_content (bracket_end + 2)
-        (String.length item_content - bracket_end - 2)
-      |> String.trim
+      String.trim
+        (String.sub item_content (bracket_end + 2)
+           (String.length item_content - bracket_end - 2))
     in
     let items = split_by_comma after_colon in
     match parse_primitives items with
@@ -381,13 +377,7 @@ let parse_array_with_list_items input =
       | Error e -> Error e)
   | _ -> Ok (`List [])
 
-let parse_array (input : string) :
-    ( Yojson.Basic.t,
-      [> `Expected_quote
-      | `Invalid_array_syntax
-      | `No_colon_in_line of string
-      | `Unterminated_quoted_string ] )
-    result =
+let parse_array (input : string) : (Yojson.Basic.t, error) result =
   try
     let bracket_end = String.index input ']' in
     let colon_idx = String.index_from input bracket_end ':' in
@@ -402,7 +392,7 @@ let parse_array (input : string) :
         | Error e -> Error e)
   with Not_found -> Error `Invalid_array_syntax
 
-let parse input =
+let parse (input : string) : (Yojson.Basic.t, error) result =
   match input with
   | "" -> Ok (`Assoc [])
   | input when String.length input > 0 && input.[0] = '[' -> parse_array input

@@ -4,5 +4,4 @@ if-then-else = k-r
 let-and = compact
 module-item-spacing = preserve
 
-exp-grouping = preserve
 sequence-blank-line = preserve-one

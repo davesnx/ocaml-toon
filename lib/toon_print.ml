@@ -118,7 +118,7 @@ let print_primitive = function
   | `Null -> "null"
   | `Assoc _ | `List _ -> ""
 
-let print_inline_array buf items =
+let print_inline_array buf (items : Yojson.Basic.t list) =
   List.iteri
     (fun i item ->
       if i > 0 then Buffer.add_char buf ',';
@@ -140,7 +140,7 @@ let print_tabular_header buf prefix key len keys =
   Buffer.add_string buf
     (prefix ^ key ^ "[" ^ string_of_int len ^ "]{" ^ header_keys ^ "}:")
 
-let print_tabular_rows buf indent keys items =
+let print_tabular_rows buf indent keys (items : Yojson.Basic.t list) =
   List.iter
     (fun item ->
       match item with
@@ -155,7 +155,7 @@ let print_tabular_rows buf indent keys items =
       | _ -> ())
     items
 
-let rec print_object buf indent json =
+let rec print_object buf indent (json : Yojson.Basic.t) =
   let prefix = String.make indent ' ' in
   match json with
   | `Assoc [] -> ()
@@ -167,7 +167,7 @@ let rec print_object buf indent json =
         fields
   | _ -> Buffer.add_string buf (print_primitive json)
 
-and print_field buf prefix indent key value =
+and print_field buf prefix indent key (value : Yojson.Basic.t) =
   let key_str = quote_key key in
   match value with
   | `Assoc [] -> Buffer.add_string buf (prefix ^ key_str ^ ":")
