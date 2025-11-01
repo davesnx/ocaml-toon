@@ -1,17 +1,24 @@
 let needs_quoting_for_key s =
-  if s = "" then true
-  else if String.contains s ':' || String.contains s ',' then true
-  else if String.contains s ' ' then true
+  if s = "" then
+    true
+  else if String.contains s ':' || String.contains s ',' then
+    true
+  else if String.contains s ' ' then
+    true
   else if
     String.contains s '\n' || String.contains s '\t' || String.contains s '\r'
-  then true
-  else if String.contains s '"' || String.contains s '\\' then true
+  then
+    true
+  else if String.contains s '"' || String.contains s '\\' then
+    true
   else if
     s.[0] = '-'
     && String.length s > 1
     && not (Char.code s.[1] >= 48 && Char.code s.[1] <= 57)
-  then true
-  else if s.[0] = '[' || s.[0] = '{' then true
+  then
+    true
+  else if s.[0] = '[' || s.[0] = '{' then
+    true
   else
     try
       ignore (float_of_string s);
@@ -19,17 +26,25 @@ let needs_quoting_for_key s =
     with Failure _ -> false
 
 let needs_quoting s =
-  if s = "" then true
-  else if s = "true" || s = "false" || s = "null" then true
-  else if String.contains s ':' || String.contains s ',' then true
+  if s = "" then
+    true
+  else if s = "true" || s = "false" || s = "null" then
+    true
+  else if String.contains s ':' || String.contains s ',' then
+    true
   else if
     String.contains s '\n' || String.contains s '\t' || String.contains s '\r'
-  then true
-  else if String.contains s '"' || String.contains s '\\' then true
-  else if s = "-" || (String.length s > 0 && s.[0] = '-') then true
-  else if s.[0] = '[' || s.[0] = '{' then true
+  then
+    true
+  else if String.contains s '"' || String.contains s '\\' then
+    true
+  else if s = "-" || (String.length s > 0 && s.[0] = '-') then
+    true
+  else if s.[0] = '[' || s.[0] = '{' then
+    true
   else if String.starts_with ~prefix:" " s || String.ends_with ~suffix:" " s
-  then true
+  then
+    true
   else
     try
       ignore (float_of_string s);
@@ -51,10 +66,16 @@ let escape_string s =
   Buffer.contents buf
 
 let print_quoted_string s =
-  if needs_quoting s then "\"" ^ escape_string s ^ "\"" else s
+  if needs_quoting s then
+    "\"" ^ escape_string s ^ "\""
+  else
+    s
 
 let quote_key s =
-  if needs_quoting_for_key s then "\"" ^ escape_string s ^ "\"" else s
+  if needs_quoting_for_key s then
+    "\"" ^ escape_string s ^ "\""
+  else
+    s
 
 let rec all_same_keys = function
   | [] | [ _ ] -> true
@@ -84,10 +105,14 @@ let print_primitive = function
   | `String s -> print_quoted_string s
   | `Int i -> string_of_int i
   | `Float f ->
-      if f = 0.0 && 1.0 /. f < 0.0 then "0"
+      if f = 0.0 && 1.0 /. f < 0.0 then
+        "0"
       else
         let s = string_of_float f in
-        if String.ends_with ~suffix:"." s then s ^ "0" else s
+        if String.ends_with ~suffix:"." s then
+          s ^ "0"
+        else
+          s
   | `Bool true -> "true"
   | `Bool false -> "false"
   | `Null -> "null"
@@ -102,7 +127,14 @@ let print_inline_array buf items =
 
 let print_tabular_header buf prefix key len keys =
   let header_keys =
-    List.mapi (fun i k -> (if i > 0 then "," else "") ^ quote_key k) keys
+    List.mapi
+      (fun i k ->
+        (if i > 0 then
+           ","
+         else
+           "")
+        ^ quote_key k)
+      keys
     |> String.concat ""
   in
   Buffer.add_string buf
@@ -185,7 +217,8 @@ and print_list_object_fields buf indent fields =
     (fun i (k, v) ->
       if i > 0 then (
         Buffer.add_char buf '\n';
-        Buffer.add_string buf (String.make (indent + 2) ' '));
+        Buffer.add_string buf (String.make (indent + 2) ' ')
+      );
       let key_str = quote_key k in
       match v with
       | `Assoc _ ->
@@ -203,18 +236,20 @@ and print_list_object_fields buf indent fields =
 
 let print_root_array buf items =
   let len = List.length items in
-  if items = [] then Buffer.add_string buf "[0]:"
+  if items = [] then
+    Buffer.add_string buf "[0]:"
   else if all_primitives items then (
     Buffer.add_string buf ("[" ^ string_of_int len ^ "]: ");
-    print_inline_array buf items)
-  else if all_same_keys items && not (has_nested_values items) then
+    print_inline_array buf items
+  ) else if all_same_keys items && not (has_nested_values items) then
     match items with
     | `Assoc first :: _ ->
         let keys = List.map fst first in
         print_tabular_header buf "" "" len keys;
         print_tabular_rows buf 2 keys items
     | _ -> ()
-  else print_list_format buf "" 0 "" items
+  else
+    print_list_format buf "" 0 "" items
 
 let print json =
   let buf = Buffer.create 256 in

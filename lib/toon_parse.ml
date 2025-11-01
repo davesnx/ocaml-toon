@@ -20,15 +20,18 @@ let error_to_string = function
 
 let get_indent line =
   let rec count i =
-    if i >= String.length line then i
-    else match line.[i] with ' ' -> count (i + 1) | _ -> i
+    if i >= String.length line then
+      i
+    else
+      match line.[i] with ' ' -> count (i + 1) | _ -> i
   in
   count 0
 
 let parse_lines input =
   String.split_on_char '\n' input
   |> List.filter_map (fun line ->
-      if String.trim line = "" then None
+      if String.trim line = "" then
+        None
       else
         let indent = get_indent line in
         let content = String.sub line indent (String.length line - indent) in
@@ -45,7 +48,8 @@ let unescape_char = function
 let parse_quoted_string s pos =
   let buf = Buffer.create 16 in
   let rec loop i =
-    if i >= String.length s then Error `Unterminated_quoted_string
+    if i >= String.length s then
+      Error `Unterminated_quoted_string
     else
       match s.[i] with
       | '"' -> Ok (Buffer.contents buf, i + 1)
@@ -56,27 +60,37 @@ let parse_quoted_string s pos =
           Buffer.add_char buf c;
           loop (i + 1)
   in
-  if pos < String.length s && s.[pos] = '"' then loop (pos + 1)
-  else Error `Expected_quote
+  if pos < String.length s && s.[pos] = '"' then
+    loop (pos + 1)
+  else
+    Error `Expected_quote
 
 let parse_primitive_value s =
   let s = String.trim s in
-  if s = "true" then `Bool true
-  else if s = "false" then `Bool false
-  else if s = "null" then `Null
-  else if s = "" then `String ""
+  if s = "true" then
+    `Bool true
+  else if s = "false" then
+    `Bool false
+  else if s = "null" then
+    `Null
+  else if s = "" then
+    `String ""
   else
     try
       if String.contains s '.' || String.contains s 'e' || String.contains s 'E'
-      then `Float (float_of_string s)
-      else `Int (int_of_string s)
+      then
+        `Float (float_of_string s)
+      else
+        `Int (int_of_string s)
     with _ -> `String s
 
 let split_by_comma s =
   let rec loop acc buf i in_quotes escaped =
     if i >= String.length s then
-      if Buffer.length buf > 0 then List.rev (Buffer.contents buf :: acc)
-      else List.rev acc
+      if Buffer.length buf > 0 then
+        List.rev (Buffer.contents buf :: acc)
+      else
+        List.rev acc
     else
       match s.[i] with
       | '\\' when not escaped ->
@@ -93,8 +107,10 @@ let split_by_comma s =
           Buffer.add_char buf c;
           loop acc buf (i + 1) in_quotes false
   in
-  if String.trim s = "" then []
-  else loop [] (Buffer.create 16) 0 false false |> List.map String.trim
+  if String.trim s = "" then
+    []
+  else
+    loop [] (Buffer.create 16) 0 false false |> List.map String.trim
 
 let parse_value_from_string s =
   let s = String.trim s in
@@ -102,7 +118,8 @@ let parse_value_from_string s =
     match parse_quoted_string s 0 with
     | Ok (str, _) -> Ok (`String str)
     | Error e -> Error e
-  else Ok (parse_primitive_value s)
+  else
+    Ok (parse_primitive_value s)
 
 let rec parse_structure lines indent_level =
   match lines with
@@ -120,7 +137,8 @@ let rec parse_structure lines indent_level =
               String.sub line.content (idx + 1)
                 (String.length line.content - idx - 1)
               |> String.trim
-            else ""
+            else
+              ""
           in
 
           let key, is_array, _array_len, array_keys =
@@ -145,7 +163,8 @@ let rec parse_structure lines indent_level =
                   if String.length len_str > 0 && len_str.[0] = '#' then
                     String.sub len_str 1 (String.length len_str - 1)
                     |> String.trim
-                  else len_str
+                  else
+                    len_str
                 in
                 let len = try int_of_string len_str with _ -> 0 in
                 let keys =
@@ -155,7 +174,8 @@ let rec parse_structure lines indent_level =
                         match parse_quoted_string k 0 with
                         | Ok (s, _) -> s
                         | Error _ -> k
-                      else k)
+                      else
+                        k)
                 in
                 (key_part, true, len, Some keys)
               else
@@ -167,11 +187,13 @@ let rec parse_structure lines indent_level =
                   if String.length len_str > 0 && len_str.[0] = '#' then
                     String.sub len_str 1 (String.length len_str - 1)
                     |> String.trim
-                  else len_str
+                  else
+                    len_str
                 in
                 let len = try int_of_string len_str with _ -> 0 in
                 (key_part, true, len, None)
-            else (before_colon, false, 0, None)
+            else
+              (before_colon, false, 0, None)
           in
 
           let key =
@@ -179,7 +201,8 @@ let rec parse_structure lines indent_level =
               match parse_quoted_string key 0 with
               | Ok (s, _) -> s
               | Error _ -> key
-            else key
+            else
+              key
           in
 
           if is_array then
@@ -297,7 +320,8 @@ and parse_list_items lines expected_indent =
             let len_str =
               if String.length len_str > 0 && len_str.[0] = '#' then
                 String.sub len_str 1 (String.length len_str - 1) |> String.trim
-              else len_str
+              else
+                len_str
             in
             let _len = try int_of_string len_str with _ -> 0 in
             let after_colon =
@@ -318,7 +342,8 @@ and parse_list_items lines expected_indent =
             if item_content <> "" then
               { content = item_content; indent = expected_indent + 2 }
               :: item_lines
-            else item_lines
+            else
+              item_lines
           in
           match parse_structure all_item_lines (expected_indent + 2) with
           | Ok (`Assoc fields, _) -> loop (`Assoc fields :: acc) rest_after
@@ -344,7 +369,8 @@ and parse_primitives items =
 
 let parse input =
   let input = String.trim input in
-  if input = "" then Ok (`Assoc [])
+  if input = "" then
+    Ok (`Assoc [])
   else if String.length input > 0 && input.[0] = '[' then
     try
       let bracket_end = String.index input ']' in
@@ -359,7 +385,8 @@ let parse input =
             try String.index rest '\n' with Not_found -> String.length rest
           in
           String.sub rest 0 newline_idx |> String.trim
-        else ""
+        else
+          ""
       in
 
       if rest_of_first_line = "" && String.contains input '\n' then
@@ -378,8 +405,10 @@ let parse input =
           match parse_list_items item_lines 2 with
           | Ok (items, _) -> Ok (`List items)
           | Error e -> Error e
-        else Ok (`List [])
-      else if rest_of_first_line = "" then Ok (`List [])
+        else
+          Ok (`List [])
+      else if rest_of_first_line = "" then
+        Ok (`List [])
       else if not (String.contains rest_of_first_line '\n') then
         let items = split_by_comma rest_of_first_line in
         match parse_primitives items with
@@ -392,7 +421,8 @@ let parse input =
         | Error e -> Error e
     with Not_found -> Error `Invalid_array_syntax
   else if (not (String.contains input ':')) && not (String.contains input '\n')
-  then parse_value_from_string input
+  then
+    parse_value_from_string input
   else
     let lines = parse_lines input in
     match parse_structure lines 0 with

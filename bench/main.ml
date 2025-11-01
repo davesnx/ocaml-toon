@@ -2,7 +2,10 @@ let test_deep_nesting () =
   Printf.printf "Testing deep nesting (10,000 levels)...\n%!";
 
   let rec build_deep n acc =
-    if n = 0 then acc else build_deep (n - 1) (`Assoc [ ("level", acc) ])
+    if n = 0 then
+      acc
+    else
+      build_deep (n - 1) (`Assoc [ ("level", acc) ])
   in
 
   let deep = build_deep 10000 (`String "bottom") in
@@ -21,7 +24,8 @@ let test_deep_nesting () =
 
       if deep = parsed then
         Printf.printf "  ✓ Deep nesting roundtrip successful\n\n%!"
-      else Printf.printf "  ✗ Deep nesting roundtrip FAILED\n\n%!"
+      else
+        Printf.printf "  ✗ Deep nesting roundtrip FAILED\n\n%!"
   | Error err ->
       let msg =
         match err with
@@ -55,7 +59,8 @@ let test_wide_arrays () =
 
       if json = parsed then
         Printf.printf "  ✓ Wide array roundtrip successful\n\n%!"
-      else Printf.printf "  ✗ Wide array roundtrip FAILED\n\n%!"
+      else
+        Printf.printf "  ✗ Wide array roundtrip FAILED\n\n%!"
   | Error err ->
       let msg =
         match err with
@@ -98,7 +103,8 @@ let test_tabular_arrays () =
 
       if json = parsed then
         Printf.printf "  ✓ Tabular array roundtrip successful\n\n%!"
-      else Printf.printf "  ✗ Tabular array roundtrip FAILED\n\n%!"
+      else
+        Printf.printf "  ✗ Tabular array roundtrip FAILED\n\n%!"
   | Error err ->
       let msg =
         match err with
@@ -150,7 +156,8 @@ let test_mixed_structure () =
 
       if json = parsed then
         Printf.printf "  ✓ Mixed structure roundtrip successful\n\n%!"
-      else Printf.printf "  ✗ Mixed structure roundtrip FAILED\n\n%!"
+      else
+        Printf.printf "  ✗ Mixed structure roundtrip FAILED\n\n%!"
   | Error err ->
       let msg =
         match err with
