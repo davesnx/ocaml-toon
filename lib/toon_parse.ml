@@ -36,7 +36,7 @@ let parse_line line =
     Some { content; indent }
 
 let parse_lines input =
-  String.split_on_char '\n' input |> List.filter_map parse_line
+  input |> String.split_on_char '\n' |> List.filter_map parse_line
 
 let unescape_char = function
   | 'n' -> '\n'
@@ -46,57 +46,52 @@ let unescape_char = function
   | '"' -> '"'
   | c -> c
 
-let parse_quoted_string s pos =
+let parse_quoted_string str pos =
   let buf = Buffer.create 16 in
   let rec loop i =
-    if i >= String.length s then
+    if i >= String.length str then
       Error `Unterminated_quoted_string
     else
-      match s.[i] with
+      match str.[i] with
       | '"' -> Ok (Buffer.contents buf, i + 1)
-      | '\\' when i + 1 < String.length s ->
-          Buffer.add_char buf (unescape_char s.[i + 1]);
+      | '\\' when i + 1 < String.length str ->
+          Buffer.add_char buf (unescape_char str.[i + 1]);
           loop (i + 2)
       | c ->
           Buffer.add_char buf c;
           loop (i + 1)
   in
-  if pos < String.length s && s.[pos] = '"' then
+  if pos < String.length str && str.[pos] = '"' then
     loop (pos + 1)
   else
     Error `Expected_quote
 
-let parse_primitive (s : string) =
-  match String.trim s with
+let parse_number str =
+  try Some (`Int (int_of_string str))
+  with Failure _ -> (
+    try Some (`Float (float_of_string str)) with Failure _ -> None)
+
+let parse_primitive (str : string) =
+  match String.trim str with
   | "true" -> `Bool true
   | "false" -> `Bool false
   | "null" -> `Null
-  | "" -> `String ""
-  | _ -> (
-      try
-        if
-          String.contains s '.' || String.contains s 'e'
-          || String.contains s 'E'
-        then
-          `Float (Float.of_string s)
-        else
-          `Int (int_of_string s)
-      with _ -> `String s)
+  | _ -> ( match parse_number str with Some num -> num | None -> `String str)
 
-let split_by_comma s =
+let split_by_comma str =
   let rec loop acc buf i ~in_quotes ~escaped =
-    if i >= String.length s then
+    if i >= String.length str then
       if Buffer.length buf > 0 then
         List.rev (Buffer.contents buf :: acc)
       else
         List.rev acc
     else
-      match s.[i] with
+      match str.[i] with
       | '\\' when not escaped ->
-          Buffer.add_char buf s.[i];
+          Buffer.add_char buf str.[i];
           loop acc buf (i + 1) ~in_quotes ~escaped:true
       | '"' when not escaped ->
-          Buffer.add_char buf s.[i];
+          Buffer.add_char buf str.[i];
           loop acc buf (i + 1) ~in_quotes:(not in_quotes) ~escaped:false
       | ',' when (not in_quotes) && not escaped ->
           let sub = Buffer.create 16 in
@@ -107,31 +102,31 @@ let split_by_comma s =
           Buffer.add_char buf c;
           loop acc buf (i + 1) ~in_quotes ~escaped:false
   in
-  if String.trim s = "" then
+  if String.trim str = "" then
     []
   else
     let buf = Buffer.create 16 in
     loop [] buf 0 ~in_quotes:false ~escaped:false |> List.map String.trim
 
-let parse_value s =
-  let s = String.trim s in
-  if String.length s > 0 && s.[0] = '"' then
-    match parse_quoted_string s 0 with
-    | Ok (str, _) -> Ok (`String str)
+let parse_value str =
+  let str = String.trim str in
+  if String.length str > 0 && str.[0] = '"' then
+    match parse_quoted_string str 0 with
+    | Ok (result_str, _) -> Ok (`String result_str)
     | Error e -> Error e
   else
-    Ok (parse_primitive s)
+    Ok (parse_primitive str)
 
-let strip_length_marker s =
-  let s = String.trim s in
-  if String.length s > 0 && s.[0] = '#' then
-    String.sub s 1 (String.length s - 1) |> String.trim
+let strip_length_marker str =
+  let str = String.trim str in
+  if String.length str > 0 && str.[0] = '#' then
+    String.sub str 1 (String.length str - 1) |> String.trim
   else
-    s
+    str
 
 let parse_unquoted_key key =
   if String.length key > 0 && key.[0] = '"' then
-    match parse_quoted_string key 0 with Ok (s, _) -> s | Error _ -> key
+    match parse_quoted_string key 0 with Ok (str, _) -> str | Error _ -> key
   else
     key
 
@@ -139,7 +134,7 @@ let parse_array_keys keys_part =
   split_by_comma keys_part
   |> List.map (fun k ->
       if String.length k > 0 && k.[0] = '"' then
-        match parse_quoted_string k 0 with Ok (s, _) -> s | Error _ -> k
+        match parse_quoted_string k 0 with Ok (str, _) -> str | Error _ -> k
       else
         k)
 
@@ -318,9 +313,9 @@ and parse_structured_item item_content item_lines ~expected_indent =
 and parse_list_item content lines ~expected_indent =
   match (content, lines) with
   | "", _ :: _ -> parse_structured_item content lines ~expected_indent
-  | s, _ when String.length s > 0 && s.[0] = '[' ->
+  | str, _ when String.length str > 0 && str.[0] = '[' ->
       parse_inline_array_item content
-  | s, _ when String.contains s ':' || lines <> [] ->
+  | str, _ when String.contains str ':' || lines <> [] ->
       parse_structured_item content lines ~expected_indent
   | _ -> parse_value content
 
@@ -350,8 +345,8 @@ and parse_list_items lines ~expected_indent =
 and parse_primitives items =
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
-    | s :: rest -> (
-        match parse_value s with
+    | str :: rest -> (
+        match parse_value str with
         | Ok v -> loop (v :: acc) rest
         | Error e -> Error e)
   in
