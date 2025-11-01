@@ -61,7 +61,7 @@ utop: ## Run a REPL with the project loaded
 
 .PHONY: bench
 bench: build ## Run benchmarks
-	@dune exec bench/main.exe
+	@dune exec benchmarks/main.exe
 
 .PHONY: subst
 subst: ## Run dune substitute (for version strings)
