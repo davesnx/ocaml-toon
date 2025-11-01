@@ -35,19 +35,27 @@ users[2]{id,name,role}:
 - 📐 **Indentation-based structure:** replaces braces with whitespace for better readability
 - 🧺 **Tabular arrays:** declare keys once, then stream rows without repetition
 
+> NOTE: `ocaml-toon` currently works exclusively with [yojson](https://opam.ocaml.org/packages/yojson/). Support for other JSON libraries or custom adapters could be added in the future, please open an issue.
+
 ## Installation
 
+Currently not published to opam repository yet, it needs pinning
+
 ### opam
-Currently not published to opam yet, need `opam pin`
 
 ```bash
-opam pin toon --dev-repo "https://github.com/davesnx/ocaml-toon"
+opam pin add toon.dev "https://github.com/davesnx/ocaml-toon.git"
 ```
 
 ### dune preview
-Add to your `dune-project`
+
+Pin the package in your `dune-project` and run `dune pkg lock` and `dune build`
 
 ```lisp
+(pin
+  (url "git+https://github.com/davesnx/ocaml-toon.git")
+  (package (name toon)))
+
 (package
   (name your-package)
   (depends
@@ -70,20 +78,18 @@ let data = `Assoc [
 ]
 
 let () = print_endline (Toon.print data)
-```
-
-Output:
-
-```
+(* Output: *)
+(*
 user:
   id: 123
   name: Ada
   tags[2]: reading,gaming
   active: true
   preferences[0]:
+*)
 ```
 
-You can also decode TOON back to Yojson values:
+You can also decode TOON back to JSON values:
 
 ```ocaml
 let toon = {|user:
@@ -101,24 +107,11 @@ let () =
       Printf.eprintf "Parse error: %s\n" (Toon.error_to_string err)
 ```
 
-
 ## API
 
-### `Toon.parse : string -> (Yojson.Basic.t, error) result`
+### `Toon.parse : string -> (Yojson.Basic.t, Toon.error) result`
 
-Parses a TOON-formatted string into a Yojson value.
-
-**Parameters:**
-
-- `input` – TOON-formatted string
-
-**Returns:**
-
-A `result` type containing either:
-- `Ok value` – A `Yojson.Basic.t` value
-- `Error err` – A parse error
-
-**Error types:**
+Parses a TOON-formatted string into a Yojson value. Returns `Ok value` on success or `Error err` on parse failure.
 
 ```ocaml
 type error =
@@ -131,117 +124,34 @@ type error =
   | `Invalid_number_format ]
 ```
 
-**Examples:**
-
 ```ocaml
-(* Simple parsing *)
 match Toon.parse "tags[3]: a,b,c" with
 | Ok json -> Printf.printf "%s\n" (Yojson.Basic.to_string json)
 | Error err -> Printf.eprintf "Error: %s\n" (Toon.error_to_string err)
-
-(* Tabular arrays *)
-let toon = {|[2]{id}:
-  1
-  2|}
-match Toon.parse toon with
-| Ok json -> (* json is `List [`Assoc [("id", `Int 1)]; `Assoc [("id", `Int 2)]] *)
-    ()
-| Error _ -> ()
-
-(* List format *)
-let toon = {|items[2]:
-  - id: 1
-    name: First
-  - id: 2
-    name: Second|}
-match Toon.parse toon with
-| Ok json -> (* json contains the parsed structure *)
-    ()
-| Error _ -> ()
 ```
 
 ### `Toon.print : Yojson.Basic.t -> string`
 
-Converts a Yojson value to TOON format.
+Converts a Yojson value to TOON format. Returns a TOON-formatted string with no trailing newline or spaces.
 
-**Parameters:**
-
-- `value` – A `Yojson.Basic.t` value to encode
-
-**Returns:**
-
-A TOON-formatted string with no trailing newline or spaces.
-
-**Examples:**
 
 ```ocaml
-(* Basic usage *)
 Toon.print (`Assoc [("id", `Int 1); ("name", `String "Ada")])
 (* => "id: 1\nname: Ada" *)
-
-(* Tabular arrays *)
-let items = `List [
-  `Assoc [
-    ("sku", `String "A1");
-    ("qty", `Int 2);
-    ("price", `Float 9.99)
-  ];
-  `Assoc [
-    ("sku", `String "B2");
-    ("qty", `Int 1);
-    ("price", `Float 14.5)
-  ]
-]
-Toon.print (`Assoc [("items", items)])
-(* => "items[2]{sku,qty,price}:\n  A1,2,9.99\n  B2,1,14.5" *)
-
-(* Nested objects *)
-Toon.print (`Assoc [
-  ("user", `Assoc [
-    ("id", `Int 123);
-    ("profile", `Assoc [
-      ("name", `String "Ada");
-      ("active", `Bool true)
-    ])
-  ])
-])
 ```
 
 ### `Toon.pp : Format.formatter -> Yojson.Basic.t -> unit`
 
 Pretty-print TOON format using OCaml's Format module.
 
-**Parameters:**
-
-- `formatter` – OCaml `Format.formatter`
-- `value` – A `Yojson.Basic.t` value to pretty-print
-
-**Example:**
-
 ```ocaml
 let data = `Assoc [("id", `Int 123); ("name", `String "Ada")]
-
-(* Print to stdout *)
-Toon.pp Format.std_formatter data;
-Format.pp_print_flush Format.std_formatter ()
-
-(* Print to string *)
 let s = Format.asprintf "%a" Toon.pp data
 ```
 
 ### `Toon.error_to_string : error -> string`
 
 Convert a parse error to a human-readable string.
-
-**Parameters:**
-
-- `err` – A parse error
-
-**Returns:**
-
-A string describing the error.
-
-**Example:**
 
 ```ocaml
 match Toon.parse "invalid[" with
