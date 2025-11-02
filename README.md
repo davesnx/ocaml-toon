@@ -41,15 +41,15 @@ users[2]{id,name,role}:
 
 Currently not published to opam repository yet, it needs pinning
 
-### opam
+##### with opam
 
 ```bash
 opam pin add toon.dev "https://github.com/davesnx/ocaml-toon.git"
 ```
 
-### dune preview
+##### or with dune preview
 
-Pin the package in your `dune-project` and run `dune pkg lock` and `dune build`
+add the pin in your `dune-project` and run `dune pkg lock` and `dune build`
 
 ```lisp
 (pin
@@ -135,7 +135,6 @@ match Toon.parse "tags[3]: a,b,c" with
 ### `Toon.print : Yojson.Basic.t -> string`
 
 Converts a JSON value to TOON format. Returns a TOON-formatted string with no trailing newline or spaces.
-
 
 ```ocaml
 Toon.print (`Assoc [("id", `Int 1); ("name", `String "Ada")])
