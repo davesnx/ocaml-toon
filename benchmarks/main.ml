@@ -29,27 +29,27 @@ let test_deep_nesting () =
   let deep = build_deep 10000 (`String "bottom") in
 
   let start = Unix.gettimeofday () in
-  let toon = Toon.print deep in
-  let print_time = Unix.gettimeofday () -. start in
-  let gc_after_print = Gc.quick_stat () in
+  let toon = Toon.encode deep in
+  let encode_time = Unix.gettimeofday () -. start in
+  let gc_after_encode = Gc.quick_stat () in
 
-  Printf.printf "  Print: %.4fs (%d bytes)\n%!" print_time (String.length toon);
+  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time (String.length toon);
   Printf.printf "    CPU time: %.4fs\n" (get_cpu_time () -. cpu_before);
   Printf.printf "    Minor GC: %d, Major GC: %d\n"
-    (gc_after_print.minor_collections - gc_before.minor_collections)
-    (gc_after_print.major_collections - gc_before.major_collections);
+    (gc_after_encode.minor_collections - gc_before.minor_collections)
+    (gc_after_encode.major_collections - gc_before.major_collections);
 
   let start = Unix.gettimeofday () in
-  match Toon.parse toon with
+  match Toon.decode toon with
   | Ok parsed ->
-      let parse_time = Unix.gettimeofday () -. start in
+      let decode_time = Unix.gettimeofday () -. start in
       let gc_after = Gc.quick_stat () in
-      Printf.printf "  Parse: %.4fs\n%!" parse_time;
+      Printf.printf "  Decode: %.4fs\n%!" decode_time;
       Printf.printf "    CPU time: %.4fs\n"
-        (get_cpu_time () -. cpu_before -. print_time);
+        (get_cpu_time () -. cpu_before -. encode_time);
       Printf.printf "    Minor GC: %d, Major GC: %d\n"
-        (gc_after.minor_collections - gc_after_print.minor_collections)
-        (gc_after.major_collections - gc_after_print.major_collections);
+        (gc_after.minor_collections - gc_after_encode.minor_collections)
+        (gc_after.major_collections - gc_after_encode.major_collections);
 
       print_gc_stats "Total";
 
@@ -81,26 +81,26 @@ let test_wide_arrays () =
   let json = `Assoc [ ("numbers", `List large_array) ] in
 
   let start = Unix.gettimeofday () in
-  let toon = Toon.print json in
-  let print_time = Unix.gettimeofday () -. start in
-  let gc_after_print = Gc.quick_stat () in
+  let toon = Toon.encode json in
+  let encode_time = Unix.gettimeofday () -. start in
+  let gc_after_encode = Gc.quick_stat () in
 
-  Printf.printf "  Print: %.4fs (%d bytes)\n%!" print_time (String.length toon);
+  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time (String.length toon);
   Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
     (get_cpu_time () -. cpu_before)
-    (gc_after_print.minor_collections - gc_before.minor_collections)
-    (gc_after_print.major_collections - gc_before.major_collections);
+    (gc_after_encode.minor_collections - gc_before.minor_collections)
+    (gc_after_encode.major_collections - gc_before.major_collections);
 
   let start = Unix.gettimeofday () in
-  match Toon.parse toon with
+  match Toon.decode toon with
   | Ok parsed ->
-      let parse_time = Unix.gettimeofday () -. start in
+      let decode_time = Unix.gettimeofday () -. start in
       let gc_after = Gc.quick_stat () in
-      Printf.printf "  Parse: %.4fs\n%!" parse_time;
+      Printf.printf "  Decode: %.4fs\n%!" decode_time;
       Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
-        (get_cpu_time () -. cpu_before -. print_time)
-        (gc_after.minor_collections - gc_after_print.minor_collections)
-        (gc_after.major_collections - gc_after_print.major_collections);
+        (get_cpu_time () -. cpu_before -. encode_time)
+        (gc_after.minor_collections - gc_after_encode.minor_collections)
+        (gc_after.major_collections - gc_after_encode.major_collections);
 
       if json = parsed then
         Printf.printf "  ✓ Wide array roundtrip successful\n\n%!"
@@ -139,26 +139,26 @@ let test_tabular_arrays () =
   let json = `Assoc [ ("records", `List records) ] in
 
   let start = Unix.gettimeofday () in
-  let toon = Toon.print json in
-  let print_time = Unix.gettimeofday () -. start in
-  let gc_after_print = Gc.quick_stat () in
+  let toon = Toon.encode json in
+  let encode_time = Unix.gettimeofday () -. start in
+  let gc_after_encode = Gc.quick_stat () in
 
-  Printf.printf "  Print: %.4fs (%d bytes)\n%!" print_time (String.length toon);
+  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time (String.length toon);
   Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
     (get_cpu_time () -. cpu_before)
-    (gc_after_print.minor_collections - gc_before.minor_collections)
-    (gc_after_print.major_collections - gc_before.major_collections);
+    (gc_after_encode.minor_collections - gc_before.minor_collections)
+    (gc_after_encode.major_collections - gc_before.major_collections);
 
   let start = Unix.gettimeofday () in
-  match Toon.parse toon with
+  match Toon.decode toon with
   | Ok parsed ->
-      let parse_time = Unix.gettimeofday () -. start in
+      let decode_time = Unix.gettimeofday () -. start in
       let gc_after = Gc.quick_stat () in
-      Printf.printf "  Parse: %.4fs\n%!" parse_time;
+      Printf.printf "  Decode: %.4fs\n%!" decode_time;
       Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
-        (get_cpu_time () -. cpu_before -. print_time)
-        (gc_after.minor_collections - gc_after_print.minor_collections)
-        (gc_after.major_collections - gc_after_print.major_collections);
+        (get_cpu_time () -. cpu_before -. encode_time)
+        (gc_after.minor_collections - gc_after_encode.minor_collections)
+        (gc_after.major_collections - gc_after_encode.major_collections);
 
       if json = parsed then
         Printf.printf "  ✓ Tabular array roundtrip successful\n\n%!"
@@ -206,26 +206,26 @@ let test_mixed_structure () =
   let json = `Assoc [ ("items", `List nested) ] in
 
   let start = Unix.gettimeofday () in
-  let toon = Toon.print json in
-  let print_time = Unix.gettimeofday () -. start in
-  let gc_after_print = Gc.quick_stat () in
+  let toon = Toon.encode json in
+  let encode_time = Unix.gettimeofday () -. start in
+  let gc_after_encode = Gc.quick_stat () in
 
-  Printf.printf "  Print: %.4fs (%d bytes)\n%!" print_time (String.length toon);
+  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time (String.length toon);
   Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
     (get_cpu_time () -. cpu_before)
-    (gc_after_print.minor_collections - gc_before.minor_collections)
-    (gc_after_print.major_collections - gc_before.major_collections);
+    (gc_after_encode.minor_collections - gc_before.minor_collections)
+    (gc_after_encode.major_collections - gc_before.major_collections);
 
   let start = Unix.gettimeofday () in
-  match Toon.parse toon with
+  match Toon.decode toon with
   | Ok parsed ->
-      let parse_time = Unix.gettimeofday () -. start in
+      let decode_time = Unix.gettimeofday () -. start in
       let gc_after = Gc.quick_stat () in
-      Printf.printf "  Parse: %.4fs\n%!" parse_time;
+      Printf.printf "  Decode: %.4fs\n%!" decode_time;
       Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
-        (get_cpu_time () -. cpu_before -. print_time)
-        (gc_after.minor_collections - gc_after_print.minor_collections)
-        (gc_after.major_collections - gc_after_print.major_collections);
+        (get_cpu_time () -. cpu_before -. encode_time)
+        (gc_after.minor_collections - gc_after_encode.minor_collections)
+        (gc_after.major_collections - gc_after_encode.major_collections);
 
       if json = parsed then
         Printf.printf "  ✓ Mixed structure roundtrip successful\n\n%!"

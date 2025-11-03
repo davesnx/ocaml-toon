@@ -251,7 +251,7 @@ let print_root_array buf items =
   else
     print_list_format buf "" 0 "" items
 
-let print json =
+let encode json =
   let buf = Buffer.create 256 in
   (match json with
   | `Assoc _ -> print_object buf 0 json

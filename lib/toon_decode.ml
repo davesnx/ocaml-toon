@@ -392,7 +392,7 @@ let parse_array (input : string) : (Yojson.Basic.t, error) result =
         | Error e -> Error e)
   with Not_found -> Error `Invalid_array_syntax
 
-let parse (input : string) : (Yojson.Basic.t, error) result =
+let decode (input : string) : (Yojson.Basic.t, error) result =
   match input with
   | "" -> Ok (`Assoc [])
   | input when String.length input > 0 && input.[0] = '[' -> parse_array input

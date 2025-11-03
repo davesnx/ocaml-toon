@@ -1,6 +1,6 @@
-type error = Toon_parse.error
+type error = Toon_decode.error
 
-let parse = Toon_parse.parse
-let error_to_string = Toon_parse.error_to_string
-let print = Toon_print.print
-let pp fmt (json : Yojson.Basic.t) = Format.fprintf fmt "%s" (print json)
+let decode = Toon_decode.decode
+let error_to_string = Toon_decode.error_to_string
+let encode = Toon_encode.encode
+let pp fmt (json : Yojson.Basic.t) = Format.fprintf fmt "%s" (encode json)

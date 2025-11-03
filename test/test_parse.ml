@@ -3,9 +3,9 @@ let check_json msg expected actual =
     msg expected actual
 
 let parse input =
-  match Toon.parse input with
+  match Toon.decode input with
   | Ok json -> json
-  | Error _err -> Alcotest.fail "Parse error"
+  | Error _err -> Alcotest.fail "Decode error"
 
 let test () =
   [

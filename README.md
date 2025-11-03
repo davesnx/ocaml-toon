@@ -78,7 +78,7 @@ let data = Yojson.Basic.from_string {|
 |}
 
 let () =
-  print_endline (Toon.print data)
+  print_endline (Toon.encode data)
 (*
 user:
   id: 123
@@ -102,18 +102,18 @@ user:
 |}
 
 let () =
-  match Toon.parse toon with
+  match Toon.decode toon with
   | Ok (value: Yojson.Basic.t) ->
       Printf.printf "%s\n" (Yojson.Basic.to_string value)
   | Error error ->
-      Printf.eprintf "Parse error: %s\n" (Toon.error_to_string error)
+      Printf.eprintf "Decode error: %s\n" (Toon.error_to_string error)
 ```
 
 ## API
 
-### `Toon.parse : string -> (Yojson.Basic.t, Toon.error) result`
+### `Toon.decode : string -> (Yojson.Basic.t, Toon.error) result`
 
-Parses a TOON-formatted string into a JSON value. Returns `Ok value` on success or `Error error` on parse failure.
+Decodes a TOON-formatted string into a JSON value. Returns `Ok value` on success or `Error error` on decode failure.
 
 ```ocaml
 type error =
@@ -127,17 +127,17 @@ type error =
 ```
 
 ```ocaml
-match Toon.parse "tags[3]: a,b,c" with
+match Toon.decode "tags[3]: a,b,c" with
 | Ok json -> Printf.printf "%s\n" (Yojson.Basic.to_string json)
 | Error error -> Printf.eprintf "Error: %s\n" (Toon.error_to_string error)
 ```
 
-### `Toon.print : Yojson.Basic.t -> string`
+### `Toon.encode : Yojson.Basic.t -> string`
 
-Converts a JSON value to TOON format. Returns a TOON-formatted string with no trailing newline or spaces.
+Encodes a JSON value to TOON format. Returns a TOON-formatted string with no trailing newline or spaces.
 
 ```ocaml
-Toon.print (`Assoc [("id", `Int 1); ("name", `String "Ada")])
+Toon.encode (`Assoc [("id", `Int 1); ("name", `String "Ada")])
 (* => "id: 1\nname: Ada" *)
 ```
 
@@ -152,13 +152,13 @@ let s = Format.asprintf "%a" Toon.pp data
 
 ### `Toon.error_to_string : error -> string`
 
-Convert a parse error to a human-readable string.
+Convert a decode error to a human-readable string.
 
 ```ocaml
-match Toon.parse "invalid[" with
+match Toon.decode "invalid[" with
 | Ok _ -> ()
 | Error err ->
-    Printf.eprintf "Parse failed: %s\n" (Toon.error_to_string err)
+    Printf.eprintf "Decode failed: %s\n" (Toon.error_to_string err)
 ```
 
 ## Canonical Formatting Rules
@@ -185,7 +185,7 @@ TOON formatting is deterministic and minimal:
 Simple objects with primitive values:
 
 ```ocaml
-Toon.print (`Assoc [
+Toon.encode (`Assoc [
   ("id", `Int 123);
   ("name", `String "Ada");
   ("active", `Bool true)
@@ -201,7 +201,7 @@ active: true
 Nested objects:
 
 ```ocaml
-Toon.print (`Assoc [
+Toon.encode (`Assoc [
   ("user", `Assoc [
     ("id", `Int 123);
     ("name", `String "Ada")
@@ -222,7 +222,7 @@ user:
 #### Primitive Arrays (Inline)
 
 ```ocaml
-Toon.print (`Assoc [
+Toon.encode (`Assoc [
   ("tags", `List [`String "admin"; `String "ops"; `String "dev"])
 ])
 ```
@@ -236,7 +236,7 @@ tags[3]: admin,ops,dev
 When all objects share the same primitive fields, TOON uses an efficient **tabular format**:
 
 ```ocaml
-Toon.print (`Assoc [
+Toon.encode (`Assoc [
   ("items", `List [
     `Assoc [
       ("sku", `String "A1");
