@@ -1,20 +1,16 @@
 (version 1.0.4)
 
 (build
- (all_platforms
-  ((action
-    (run
-     ocaml
-     pkg/pkg.ml
-     build
-     --dev-pkg
-     %{pkg-self:dev}
-     --with-cmdliner
-     %{pkg:cmdliner:installed})))))
+ (run
+  ocaml
+  pkg/pkg.ml
+  build
+  --dev-pkg
+  %{pkg-self:dev}
+  --with-cmdliner
+  %{pkg:cmdliner:installed}))
 
-(depends
- (all_platforms
-  (ocaml ocamlfind ocamlbuild topkg cmdliner)))
+(depends ocaml ocamlfind ocamlbuild topkg cmdliner)
 
 (source
  (fetch

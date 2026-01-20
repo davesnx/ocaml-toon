@@ -1,11 +1,9 @@
 (version 1.2.1)
 
 (build
- (all_platforms ((action (run dune build -p %{pkg-self:name} -j %{jobs})))))
+ (run dune build -p %{pkg-self:name} -j %{jobs}))
 
-(depends
- (all_platforms
-  (ocaml dune)))
+(depends ocaml dune)
 
 (source
  (fetch

@@ -1,12 +1,9 @@
 (version 0.8.5)
 
 (build
- (all_platforms
-  ((action (run ocaml pkg/pkg.ml build --pinned %{pkg-self:pinned})))))
+ (run ocaml pkg/pkg.ml build --pinned %{pkg-self:pinned}))
 
-(depends
- (all_platforms
-  (ocaml ocamlfind ocamlbuild topkg)))
+(depends ocaml ocamlfind ocamlbuild topkg)
 
 (source
  (fetch
