@@ -132,13 +132,23 @@ match Toon.decode "tags[3]: a,b,c" with
 | Error error -> Printf.eprintf "Error: %s\n" (Toon.error_to_string error)
 ```
 
-### `Toon.encode : Yojson.Basic.t -> string`
+### `Toon.encode : ?delimiter:delimiter -> Yojson.Basic.t -> string`
 
 Encodes a JSON value to TOON format. Returns a TOON-formatted string with no trailing newline or spaces.
+
+The optional `~delimiter` parameter specifies the delimiter for arrays (default: `Comma`).
+
+```ocaml
+type delimiter = Comma | Tab | Pipe
+```
 
 ```ocaml
 Toon.encode (`Assoc [("id", `Int 1); ("name", `String "Ada")])
 (* => "id: 1\nname: Ada" *)
+
+(* Using pipe delimiter for arrays with commas in values *)
+Toon.encode ~delimiter:Toon.Pipe (`Assoc [("items", `List [`String "a,b"; `String "c,d"])])
+(* => "items[2|]: a,b|c,d" *)
 ```
 
 ### `Toon.pp : Format.formatter -> Yojson.Basic.t -> unit`

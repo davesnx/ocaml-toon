@@ -1,7 +1,18 @@
-let needs_quoting_for_key s =
+type delimiter = Comma | Tab | Pipe
+
+let delimiter_char = function Comma -> ',' | Tab -> '\t' | Pipe -> '|'
+let delimiter_str = function Comma -> "," | Tab -> "\t" | Pipe -> "|"
+
+let delimiter_header_marker = function
+  | Comma -> ""
+  | Tab -> "\t"
+  | Pipe -> "|"
+
+let needs_quoting_for_key ~delim s =
+  let d = delimiter_char delim in
   if s = "" then
     true
-  else if String.contains s ':' || String.contains s ',' then
+  else if String.contains s ':' || String.contains s d then
     true
   else if String.contains s ' ' then
     true
@@ -10,6 +21,8 @@ let needs_quoting_for_key s =
   then
     true
   else if String.contains s '"' || String.contains s '\\' then
+    true
+  else if String.contains s '|' then
     true
   else if
     s.[0] = '-'
@@ -25,18 +38,21 @@ let needs_quoting_for_key s =
       true
     with Failure _ -> false
 
-let needs_quoting s =
+let needs_quoting ~delim s =
+  let d = delimiter_char delim in
   if s = "" then
     true
   else if s = "true" || s = "false" || s = "null" then
     true
-  else if String.contains s ':' || String.contains s ',' then
+  else if String.contains s ':' || String.contains s d then
     true
   else if
     String.contains s '\n' || String.contains s '\t' || String.contains s '\r'
   then
     true
   else if String.contains s '"' || String.contains s '\\' then
+    true
+  else if String.contains s '|' then
     true
   else if s = "-" || (String.length s > 0 && s.[0] = '-') then
     true
@@ -65,14 +81,14 @@ let escape_string s =
     s;
   Buffer.contents buf
 
-let print_quoted_string s =
-  if needs_quoting s then
+let print_quoted_string ~delim s =
+  if needs_quoting ~delim s then
     "\"" ^ escape_string s ^ "\""
   else
     s
 
-let quote_key s =
-  if needs_quoting_for_key s then
+let quote_key ~delim s =
+  if needs_quoting_for_key ~delim s then
     "\"" ^ escape_string s ^ "\""
   else
     s
@@ -101,8 +117,8 @@ let has_nested_values items =
       | _ -> false)
     items
 
-let print_primitive = function
-  | `String s -> print_quoted_string s
+let print_primitive ~delim = function
+  | `String s -> print_quoted_string ~delim s
   | `Int i -> string_of_int i
   | `Float f ->
       if f = 0.0 && 1.0 /. f < 0.0 then
@@ -118,29 +134,33 @@ let print_primitive = function
   | `Null -> "null"
   | `Assoc _ | `List _ -> ""
 
-let print_inline_array buf (items : Yojson.Basic.t list) =
+let print_inline_array ~delim buf (items : Yojson.Basic.t list) =
+  let d = delimiter_str delim in
   List.iteri
     (fun i item ->
-      if i > 0 then Buffer.add_char buf ',';
-      Buffer.add_string buf (print_primitive item))
+      if i > 0 then Buffer.add_string buf d;
+      Buffer.add_string buf (print_primitive ~delim item))
     items
 
-let print_tabular_header buf prefix key len keys =
+let print_tabular_header ~delim buf prefix key len keys =
+  let d = delimiter_str delim in
   let header_keys =
     List.mapi
       (fun i k ->
         (if i > 0 then
-           ","
+           d
          else
            "")
-        ^ quote_key k)
+        ^ quote_key ~delim k)
       keys
     |> String.concat ""
   in
+  let marker = delimiter_header_marker delim in
   Buffer.add_string buf
-    (prefix ^ key ^ "[" ^ string_of_int len ^ "]{" ^ header_keys ^ "}:")
+    (prefix ^ key ^ "[" ^ string_of_int len ^ marker ^ "]{" ^ header_keys ^ "}:")
 
-let print_tabular_rows buf indent keys (items : Yojson.Basic.t list) =
+let print_tabular_rows ~delim buf indent keys (items : Yojson.Basic.t list) =
+  let d = delimiter_str delim in
   List.iter
     (fun item ->
       match item with
@@ -149,13 +169,13 @@ let print_tabular_rows buf indent keys (items : Yojson.Basic.t list) =
           Buffer.add_string buf (String.make indent ' ');
           List.iteri
             (fun i k ->
-              if i > 0 then Buffer.add_char buf ',';
-              Buffer.add_string buf (List.assoc k obj |> print_primitive))
+              if i > 0 then Buffer.add_string buf d;
+              Buffer.add_string buf (List.assoc k obj |> print_primitive ~delim))
             keys
       | _ -> ())
     items
 
-let rec print_object buf indent (json : Yojson.Basic.t) =
+let rec print_object ~delim buf indent (json : Yojson.Basic.t) =
   let prefix = String.make indent ' ' in
   match json with
   | `Assoc [] -> ()
@@ -163,98 +183,109 @@ let rec print_object buf indent (json : Yojson.Basic.t) =
       List.iteri
         (fun i (key, value) ->
           if i > 0 then Buffer.add_char buf '\n';
-          print_field buf prefix indent key value)
+          print_field ~delim buf prefix indent key value)
         fields
-  | _ -> Buffer.add_string buf (print_primitive json)
+  | _ -> Buffer.add_string buf (print_primitive ~delim json)
 
-and print_field buf prefix indent key (value : Yojson.Basic.t) =
-  let key_str = quote_key key in
+and print_field ~delim buf prefix indent key (value : Yojson.Basic.t) =
+  let key_str = quote_key ~delim key in
   match value with
   | `Assoc [] -> Buffer.add_string buf (prefix ^ key_str ^ ":")
   | `Assoc _ ->
       Buffer.add_string buf (prefix ^ key_str ^ ":\n");
-      print_object buf (indent + 2) value
-  | `List [] -> Buffer.add_string buf (prefix ^ key_str ^ "[0]:")
-  | `List _ -> print_array_field buf prefix indent key_str value
+      print_object ~delim buf (indent + 2) value
+  | `List [] ->
+      let marker = delimiter_header_marker delim in
+      Buffer.add_string buf (prefix ^ key_str ^ "[0" ^ marker ^ "]:")
+  | `List _ -> print_array_field ~delim buf prefix indent key_str value
   | _ ->
       Buffer.add_string buf (prefix ^ key_str ^ ": ");
-      Buffer.add_string buf (print_primitive value)
+      Buffer.add_string buf (print_primitive ~delim value)
 
-and print_array_field buf prefix indent key items =
+and print_array_field ~delim buf prefix indent key items =
+  let marker = delimiter_header_marker delim in
   match items with
   | `List items when all_primitives items ->
       Buffer.add_string buf
-        (prefix ^ key ^ "[" ^ string_of_int (List.length items) ^ "]: ");
-      print_inline_array buf items
+        (prefix ^ key ^ "[" ^ string_of_int (List.length items) ^ marker
+       ^ "]: ");
+      print_inline_array ~delim buf items
   | `List items when all_same_keys items && not (has_nested_values items) -> (
       match items with
       | `Assoc first :: _ ->
           let keys = List.map fst first in
-          print_tabular_header buf prefix key (List.length items) keys;
-          print_tabular_rows buf (indent + 2) keys items
+          print_tabular_header ~delim buf prefix key (List.length items) keys;
+          print_tabular_rows ~delim buf (indent + 2) keys items
       | _ -> ())
-  | `List items -> print_list_format buf prefix indent key items
+  | `List items -> print_list_format ~delim buf prefix indent key items
   | _ -> ()
 
-and print_list_format buf prefix indent key items =
+and print_list_format ~delim buf prefix indent key items =
   let len = List.length items in
-  Buffer.add_string buf (prefix ^ key ^ "[" ^ string_of_int len ^ "]:");
-  List.iter (print_list_item buf (indent + 2)) items
+  let marker = delimiter_header_marker delim in
+  Buffer.add_string buf
+    (prefix ^ key ^ "[" ^ string_of_int len ^ marker ^ "]:");
+  List.iter (print_list_item ~delim buf (indent + 2)) items
 
-and print_list_item buf indent item =
+and print_list_item ~delim buf indent item =
   Buffer.add_char buf '\n';
   Buffer.add_string buf (String.make indent ' ');
   Buffer.add_string buf "- ";
   match item with
-  | `Assoc fields -> print_list_object_fields buf indent fields
+  | `Assoc fields -> print_list_object_fields ~delim buf indent fields
   | `List subitems when all_primitives subitems ->
-      Buffer.add_string buf ("[" ^ string_of_int (List.length subitems) ^ "]: ");
-      print_inline_array buf subitems
-  | _ -> Buffer.add_string buf (print_primitive item)
+      let marker = delimiter_header_marker delim in
+      Buffer.add_string buf
+        ("[" ^ string_of_int (List.length subitems) ^ marker ^ "]: ");
+      print_inline_array ~delim buf subitems
+  | _ -> Buffer.add_string buf (print_primitive ~delim item)
 
-and print_list_object_fields buf indent fields =
+and print_list_object_fields ~delim buf indent fields =
   List.iteri
     (fun i (k, v) ->
       if i > 0 then (
         Buffer.add_char buf '\n';
         Buffer.add_string buf (String.make (indent + 2) ' ')
       );
-      let key_str = quote_key k in
+      let key_str = quote_key ~delim k in
       match v with
       | `Assoc _ ->
           Buffer.add_string buf (key_str ^ ":\n");
-          print_object buf (indent + 4) v
-      | `List [] -> Buffer.add_string buf (key_str ^ "[0]:")
+          print_object ~delim buf (indent + 4) v
+      | `List [] ->
+          let marker = delimiter_header_marker delim in
+          Buffer.add_string buf (key_str ^ "[0" ^ marker ^ "]:")
       | `List _ ->
-          print_array_field buf
+          print_array_field ~delim buf
             (String.make (indent + 2) ' ')
             (indent + 2) key_str v
       | _ ->
           Buffer.add_string buf (key_str ^ ": ");
-          Buffer.add_string buf (print_primitive v))
+          Buffer.add_string buf (print_primitive ~delim v))
     fields
 
-let print_root_array buf items =
+let print_root_array ~delim buf items =
   let len = List.length items in
+  let marker = delimiter_header_marker delim in
   if items = [] then
-    Buffer.add_string buf "[0]:"
+    Buffer.add_string buf ("[0" ^ marker ^ "]:")
   else if all_primitives items then (
-    Buffer.add_string buf ("[" ^ string_of_int len ^ "]: ");
-    print_inline_array buf items
+    Buffer.add_string buf ("[" ^ string_of_int len ^ marker ^ "]: ");
+    print_inline_array ~delim buf items
   ) else if all_same_keys items && not (has_nested_values items) then
     match items with
     | `Assoc first :: _ ->
         let keys = List.map fst first in
-        print_tabular_header buf "" "" len keys;
-        print_tabular_rows buf 2 keys items
+        print_tabular_header ~delim buf "" "" len keys;
+        print_tabular_rows ~delim buf 2 keys items
     | _ -> ()
   else
-    print_list_format buf "" 0 "" items
+    print_list_format ~delim buf "" 0 "" items
 
-let encode json =
+let encode ?(delimiter = Comma) json =
   let buf = Buffer.create 256 in
   (match json with
-  | `Assoc _ -> print_object buf 0 json
-  | `List items -> print_root_array buf items
-  | _ -> Buffer.add_string buf (print_primitive json));
+  | `Assoc _ -> print_object ~delim:delimiter buf 0 json
+  | `List items -> print_root_array ~delim:delimiter buf items
+  | _ -> Buffer.add_string buf (print_primitive ~delim:delimiter json));
   Buffer.contents buf

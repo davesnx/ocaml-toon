@@ -78,7 +78,12 @@ let parse_primitive (str : string) =
   | "null" -> `Null
   | _ -> ( match parse_number str with Some num -> num | None -> `String str)
 
-let split_by_comma str =
+type delimiter = Comma | Tab | Pipe
+
+let delimiter_char = function Comma -> ',' | Tab -> '\t' | Pipe -> '|'
+
+let split_by_delimiter ~delim str =
+  let delim_char = delimiter_char delim in
   let rec loop acc buf i ~in_quotes ~escaped =
     if i >= String.length str then
       if Buffer.length buf > 0 then
@@ -93,7 +98,7 @@ let split_by_comma str =
       | '"' when not escaped ->
           Buffer.add_char buf str.[i];
           loop acc buf (i + 1) ~in_quotes:(not in_quotes) ~escaped:false
-      | ',' when (not in_quotes) && not escaped ->
+      | c when c = delim_char && (not in_quotes) && not escaped ->
           let sub = Buffer.create 16 in
           loop
             (Buffer.contents buf :: acc)
@@ -107,6 +112,8 @@ let split_by_comma str =
   else
     let buf = Buffer.create 16 in
     loop [] buf 0 ~in_quotes:false ~escaped:false |> List.map String.trim
+
+let split_by_comma str = split_by_delimiter ~delim:Comma str
 
 let parse_value str =
   let str = String.trim str in
@@ -130,17 +137,26 @@ let parse_unquoted_key key =
   else
     key
 
-let parse_array_keys keys_part =
-  split_by_comma keys_part
+let parse_array_keys ~delim keys_part =
+  split_by_delimiter ~delim keys_part
   |> List.map (fun k ->
       if String.length k > 0 && k.[0] = '"' then
         match parse_quoted_string k 0 with Ok (str, _) -> str | Error _ -> k
       else
         k)
 
+let detect_delimiter_and_length len_part =
+  let len = String.length len_part in
+  if len > 0 && len_part.[len - 1] = '|' then
+    (Pipe, String.sub len_part 0 (len - 1))
+  else if len > 0 && len_part.[len - 1] = '\t' then
+    (Tab, String.sub len_part 0 (len - 1))
+  else
+    (Comma, len_part)
+
 let parse_header before_colon =
   if not (String.contains before_colon '[') then
-    (before_colon, false, 0, None)
+    (before_colon, false, 0, Comma, None)
   else
     let bracket_start = String.index before_colon '[' in
     let key_part = String.sub before_colon 0 bracket_start in
@@ -151,32 +167,46 @@ let parse_header before_colon =
 
     if String.contains bracket_part '{' then
       let brace_idx = String.index bracket_part '{' in
-      let len_part = String.sub bracket_part 1 (brace_idx - 1) in
+      let len_part = String.sub bracket_part 1 (brace_idx - 2) in
+      let delim, clean_len_part = detect_delimiter_and_length len_part in
       let keys_part =
         let end_idx = String.index bracket_part '}' in
         String.sub bracket_part (brace_idx + 1) (end_idx - brace_idx - 1)
       in
-      let len_str = strip_length_marker len_part in
+      let len_str = strip_length_marker clean_len_part in
       let len = try int_of_string len_str with _ -> 0 in
-      let keys = parse_array_keys keys_part in
-      (key_part, true, len, Some keys)
+      let keys = parse_array_keys ~delim keys_part in
+      (key_part, true, len, delim, Some keys)
     else
-      let len_str =
+      let len_part =
         String.sub bracket_part 1 (String.length bracket_part - 2)
-        |> strip_length_marker
       in
+      let delim, clean_len_part = detect_delimiter_and_length len_part in
+      let len_str = strip_length_marker clean_len_part in
       let len = try int_of_string len_str with _ -> 0 in
-      (key_part, true, len, None)
+      (key_part, true, len, delim, None)
 
-let rec parse_array_value key array_keys after_colon rest line indent_level =
+let validate_array_length expected_len items =
+  if expected_len > 0 && List.length items <> expected_len then
+    Error `Array_length_mismatch
+  else
+    Ok items
+
+let rec parse_array_value key array_len delim array_keys after_colon rest line
+    indent_level =
   if after_colon = "" then
     match array_keys with
     | Some keys -> (
         match
-          parse_tabular_rows rest ~expected_indent:(indent_level + 2) keys
+          parse_tabular_rows rest ~expected_indent:(indent_level + 2) ~delim
+            keys
         with
-        | Ok (rows, remaining) ->
-            parse_remaining_fields key (`List rows) rest remaining indent_level
+        | Ok (rows, remaining) -> (
+            match validate_array_length array_len rows with
+            | Ok _ ->
+                parse_remaining_fields key (`List rows) rest remaining
+                  indent_level
+            | Error e -> Error e)
         | Error e -> Error e)
     | None -> (
         match rest with
@@ -184,16 +214,26 @@ let rec parse_array_value key array_keys after_colon rest line indent_level =
           when next.indent > line.indent
                && String.starts_with ~prefix:"- " next.content -> (
             match parse_list_items rest ~expected_indent:(indent_level + 2) with
-            | Ok (items, remaining) ->
-                parse_remaining_fields key (`List items) rest remaining
-                  indent_level
+            | Ok (items, remaining) -> (
+                match validate_array_length array_len items with
+                | Ok _ ->
+                    parse_remaining_fields key (`List items) rest remaining
+                      indent_level
+                | Error e -> Error e)
             | Error e -> Error e)
-        | _ -> parse_remaining_fields key (`List []) rest rest indent_level)
+        | _ ->
+            if array_len > 0 then
+              Error `Array_length_mismatch
+            else
+              parse_remaining_fields key (`List []) rest rest indent_level)
   else
-    let items = split_by_comma after_colon in
+    let items = split_by_delimiter ~delim after_colon in
     match parse_primitives items with
-    | Ok parsed ->
-        parse_remaining_fields key (`List parsed) rest rest indent_level
+    | Ok parsed -> (
+        match validate_array_length array_len parsed with
+        | Ok _ ->
+            parse_remaining_fields key (`List parsed) rest rest indent_level
+        | Error e -> Error e)
     | Error e -> Error e
 
 and parse_object_or_primitive key after_colon rest indent_level =
@@ -230,13 +270,14 @@ and parse_structure lines indent_level =
               ""
           in
 
-          let raw_key, is_array, _array_len, array_keys =
+          let raw_key, is_array, array_len, delim, array_keys =
             parse_header before_colon
           in
           let key = parse_unquoted_key raw_key in
 
           if is_array then
-            parse_array_value key array_keys after_colon rest line indent_level
+            parse_array_value key array_len delim array_keys after_colon rest
+              line indent_level
           else
             parse_object_or_primitive key after_colon rest indent_level)
 
@@ -249,14 +290,14 @@ and parse_remaining_fields first_key first_value _original_rest remaining
       Ok (`Assoc [ (first_key, first_value) ], final_remaining)
   | Error e -> Error e
 
-and parse_tabular_rows lines ~expected_indent keys =
+and parse_tabular_rows lines ~expected_indent ~delim keys =
   let rec loop acc remaining =
     match remaining with
     | [] -> Ok (List.rev acc, [])
     | line :: _ when line.indent < expected_indent ->
         Ok (List.rev acc, remaining)
     | line :: rest when line.indent = expected_indent -> (
-        let values = split_by_comma line.content in
+        let values = split_by_delimiter ~delim line.content in
         match parse_primitives values with
         | Ok parsed ->
             let obj = List.combine keys parsed |> fun pairs -> `Assoc pairs in
@@ -283,14 +324,21 @@ and parse_inline_array_item (item_content : string) =
     && bracket_end + 1 < String.length item_content
     && item_content.[bracket_end + 1] = ':'
   then
+    let len_part = String.sub item_content 1 (bracket_end - 1) in
+    let delim, clean_len_part = detect_delimiter_and_length len_part in
+    let len_str = strip_length_marker clean_len_part in
+    let expected_len = try int_of_string len_str with _ -> 0 in
     let after_colon =
       String.trim
         (String.sub item_content (bracket_end + 2)
            (String.length item_content - bracket_end - 2))
     in
-    let items = split_by_comma after_colon in
+    let items = split_by_delimiter ~delim after_colon in
     match parse_primitives items with
-    | Ok parsed -> Ok (`List parsed)
+    | Ok parsed -> (
+        match validate_array_length expected_len parsed with
+        | Ok _ -> Ok (`List parsed)
+        | Error e -> Error e)
     | Error e -> Error e
   else
     parse_value item_content
@@ -360,7 +408,7 @@ let extract_first_line_after_colon input colon_idx =
   else
     ""
 
-let parse_array_with_list_items input =
+let parse_array_with_list_items ~expected_len input =
   let after_first_line_idx = String.index input '\n' + 1 in
   let rest_input =
     String.sub input after_first_line_idx
@@ -373,26 +421,64 @@ let parse_array_with_list_items input =
            (fun line -> String.starts_with ~prefix:"- " line.content)
            item_lines -> (
       match parse_list_items item_lines ~expected_indent:2 with
-      | Ok (items, _) -> Ok (`List items)
+      | Ok (items, _) -> (
+          match validate_array_length expected_len items with
+          | Ok _ -> Ok (`List items)
+          | Error e -> Error e)
       | Error e -> Error e)
-  | _ -> Ok (`List [])
+  | _ ->
+      if expected_len > 0 then
+        Error `Array_length_mismatch
+      else
+        Ok (`List [])
 
 let parse_array (input : string) : (Yojson.Basic.t, error) result =
   try
     let bracket_end = String.index input ']' in
+    let len_part = String.sub input 1 (bracket_end - 1) in
+    let delim, clean_len_part = detect_delimiter_and_length len_part in
+    let len_str = strip_length_marker clean_len_part in
+    let expected_len = try int_of_string len_str with _ -> 0 in
     let colon_idx = String.index_from input bracket_end ':' in
     let rest_of_first_line = extract_first_line_after_colon input colon_idx in
     match rest_of_first_line with
-    | "" when String.contains input '\n' -> parse_array_with_list_items input
-    | "" -> Ok (`List [])
+    | "" when String.contains input '\n' ->
+        parse_array_with_list_items ~expected_len input
+    | "" ->
+        if expected_len > 0 then
+          Error `Array_length_mismatch
+        else
+          Ok (`List [])
     | _ -> (
-        let lines = parse_lines input in
-        match parse_structure lines 0 with
-        | Ok (value, _) -> Ok value
+        let items = split_by_delimiter ~delim rest_of_first_line in
+        match parse_primitives items with
+        | Ok parsed -> (
+            match validate_array_length expected_len parsed with
+            | Ok _ -> Ok (`List parsed)
+            | Error e -> Error e)
         | Error e -> Error e)
   with Not_found -> Error `Invalid_array_syntax
 
+let normalize_line_endings input =
+  let buf = Buffer.create (String.length input) in
+  let len = String.length input in
+  let rec loop i =
+    if i >= len then
+      Buffer.contents buf
+    else
+      match input.[i] with
+      | '\r' when i + 1 < len && input.[i + 1] = '\n' -> loop (i + 1)
+      | '\r' ->
+          Buffer.add_char buf '\n';
+          loop (i + 1)
+      | c ->
+          Buffer.add_char buf c;
+          loop (i + 1)
+  in
+  loop 0
+
 let decode (input : string) : (Yojson.Basic.t, error) result =
+  let input = normalize_line_endings input in
   match input with
   | "" -> Ok (`Assoc [])
   | input when String.length input > 0 && input.[0] = '[' -> parse_array input

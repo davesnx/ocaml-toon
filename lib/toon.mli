@@ -7,14 +7,12 @@ type error =
   | `Array_length_mismatch
   | `Invalid_number_format ]
 
+type delimiter = Comma | Tab | Pipe
+
 val error_to_string : error -> string
-(** Convert an error to a string *)
 
 val decode : string -> (Yojson.Basic.t, error) result
-(** Decode a TOON format string to a Yojson value *)
 
-val encode : Yojson.Basic.t -> string
-(** Encode a Yojson value to TOON format string *)
+val encode : ?delimiter:delimiter -> Yojson.Basic.t -> string
 
 val pp : Format.formatter -> Yojson.Basic.t -> unit
-(** Pretty-print TOON format using OCaml's Format module *)
