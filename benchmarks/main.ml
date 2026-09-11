@@ -33,7 +33,8 @@ let test_deep_nesting () =
   let encode_time = Unix.gettimeofday () -. start in
   let gc_after_encode = Gc.quick_stat () in
 
-  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time (String.length toon);
+  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time
+    (String.length toon);
   Printf.printf "    CPU time: %.4fs\n" (get_cpu_time () -. cpu_before);
   Printf.printf "    Minor GC: %d, Major GC: %d\n"
     (gc_after_encode.minor_collections - gc_before.minor_collections)
@@ -58,17 +59,7 @@ let test_deep_nesting () =
       else
         Printf.printf "  ✗ Deep nesting roundtrip FAILED\n\n%!"
   | Error err ->
-      let msg =
-        match err with
-        | `Unterminated_quoted_string -> "Unterminated quoted string"
-        | `Expected_quote -> "Expected quote"
-        | `Invalid_escape_sequence -> "Invalid escape sequence"
-        | `No_colon_in_line line -> "No colon in line: " ^ line
-        | `Invalid_array_syntax -> "Invalid array syntax"
-        | `Array_length_mismatch -> "Array length mismatch"
-        | `Invalid_number_format -> "Invalid number format"
-      in
-      Printf.printf "  ✗ Parse error: %s\n\n%!" msg
+      Printf.printf "  ✗ Parse error: %s\n\n%!" (Toon.error_to_string err)
 
 let test_wide_arrays () =
   Printf.printf "Testing wide arrays (100,000 elements)...\n%!";
@@ -85,7 +76,8 @@ let test_wide_arrays () =
   let encode_time = Unix.gettimeofday () -. start in
   let gc_after_encode = Gc.quick_stat () in
 
-  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time (String.length toon);
+  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time
+    (String.length toon);
   Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
     (get_cpu_time () -. cpu_before)
     (gc_after_encode.minor_collections - gc_before.minor_collections)
@@ -107,17 +99,7 @@ let test_wide_arrays () =
       else
         Printf.printf "  ✗ Wide array roundtrip FAILED\n\n%!"
   | Error err ->
-      let msg =
-        match err with
-        | `Unterminated_quoted_string -> "Unterminated quoted string"
-        | `Expected_quote -> "Expected quote"
-        | `Invalid_escape_sequence -> "Invalid escape sequence"
-        | `No_colon_in_line line -> "No colon in line: " ^ line
-        | `Invalid_array_syntax -> "Invalid array syntax"
-        | `Array_length_mismatch -> "Array length mismatch"
-        | `Invalid_number_format -> "Invalid number format"
-      in
-      Printf.printf "  ✗ Parse error: %s\n\n%!" msg
+      Printf.printf "  ✗ Parse error: %s\n\n%!" (Toon.error_to_string err)
 
 let test_tabular_arrays () =
   Printf.printf "Testing large tabular arrays (50,000 rows)...\n%!";
@@ -132,7 +114,7 @@ let test_tabular_arrays () =
           [
             ("id", `Int i);
             ("name", `String (Printf.sprintf "user_%d" i));
-            ("score", `Float (float_of_int i *. 1.5));
+            ("score", `Float (float_of_int i +. 0.5));
             ("active", `Bool (i mod 2 = 0));
           ])
   in
@@ -143,7 +125,8 @@ let test_tabular_arrays () =
   let encode_time = Unix.gettimeofday () -. start in
   let gc_after_encode = Gc.quick_stat () in
 
-  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time (String.length toon);
+  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time
+    (String.length toon);
   Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
     (get_cpu_time () -. cpu_before)
     (gc_after_encode.minor_collections - gc_before.minor_collections)
@@ -165,17 +148,7 @@ let test_tabular_arrays () =
       else
         Printf.printf "  ✗ Tabular array roundtrip FAILED\n\n%!"
   | Error err ->
-      let msg =
-        match err with
-        | `Unterminated_quoted_string -> "Unterminated quoted string"
-        | `Expected_quote -> "Expected quote"
-        | `Invalid_escape_sequence -> "Invalid escape sequence"
-        | `No_colon_in_line line -> "No colon in line: " ^ line
-        | `Invalid_array_syntax -> "Invalid array syntax"
-        | `Array_length_mismatch -> "Array length mismatch"
-        | `Invalid_number_format -> "Invalid number format"
-      in
-      Printf.printf "  ✗ Parse error: %s\n\n%!" msg
+      Printf.printf "  ✗ Parse error: %s\n\n%!" (Toon.error_to_string err)
 
 let test_mixed_structure () =
   Printf.printf "Testing mixed deep & wide structure...\n%!";
@@ -210,7 +183,8 @@ let test_mixed_structure () =
   let encode_time = Unix.gettimeofday () -. start in
   let gc_after_encode = Gc.quick_stat () in
 
-  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time (String.length toon);
+  Printf.printf "  Encode: %.4fs (%d bytes)\n%!" encode_time
+    (String.length toon);
   Printf.printf "    CPU time: %.4fs, Minor GC: %d, Major GC: %d\n"
     (get_cpu_time () -. cpu_before)
     (gc_after_encode.minor_collections - gc_before.minor_collections)
@@ -232,17 +206,7 @@ let test_mixed_structure () =
       else
         Printf.printf "  ✗ Mixed structure roundtrip FAILED\n\n%!"
   | Error err ->
-      let msg =
-        match err with
-        | `Unterminated_quoted_string -> "Unterminated quoted string"
-        | `Expected_quote -> "Expected quote"
-        | `Invalid_escape_sequence -> "Invalid escape sequence"
-        | `No_colon_in_line line -> "No colon in line: " ^ line
-        | `Invalid_array_syntax -> "Invalid array syntax"
-        | `Array_length_mismatch -> "Array length mismatch"
-        | `Invalid_number_format -> "Invalid number format"
-      in
-      Printf.printf "  ✗ Parse error: %s\n\n%!" msg
+      Printf.printf "  ✗ Parse error: %s\n\n%!" (Toon.error_to_string err)
 
 let () =
   Printf.printf "\n=== TOON Benchmark ===\n\n%!";

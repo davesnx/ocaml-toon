@@ -1,3 +1,7 @@
 (test
  (name test)
- (libraries toon yojson testo alcotest))
+ (libraries toon yojson testo alcotest)
+ (deps
+  (source_tree fixtures))
+ (action
+  (run %{test} run -j0)))
