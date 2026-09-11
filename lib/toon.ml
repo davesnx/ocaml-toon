@@ -1,4 +1,4 @@
-type error = Toon_decode.error
+type error = Toon_decode.error = { line : int; message : string }
 type delimiter = Toon_encode.delimiter = Comma | Tab | Pipe
 
 let decode = Toon_decode.decode

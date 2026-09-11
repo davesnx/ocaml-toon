@@ -2,7 +2,7 @@
 
 **Token-Oriented Object Notation** is a compact, human-readable format designed for passing structured data to Large Language Models with significantly reduced token usage.
 
-This is an OCaml port of the [TOON library](https://github.com/johannschopplich/toon) originally written in TypeScript.
+This is an OCaml port of the [TOON library](https://github.com/toon-format/toon) originally written in TypeScript. It targets [TOON spec version 4.1](https://github.com/toon-format/spec).
 
 TOON excels at **uniform complex objects** – multiple fields per row, same structure across items. It borrows YAML's indentation-based structure for nested objects and CSV's tabular format for uniform data rows, then optimizes both for token efficiency in LLM contexts.
 
@@ -68,10 +68,10 @@ add the pin in your `dune-project` and run `dune pkg lock` and `dune build`
 let data = Yojson.Basic.from_string {|
 {
   "user": {
-    "id": 123
-    "name": "Ada"
-    "tags": ["reading", "gaming"]
-    "active": true
+    "id": 123,
+    "name": "Ada",
+    "tags": ["reading", "gaming"],
+    "active": true,
     "preferences": []
   }
 }
@@ -85,11 +85,11 @@ user:
   name: Ada
   tags[2]: reading,gaming
   active: true
-  preferences[0]:
+  preferences: []
 *)
 ```
 
-You can also decode TOON back to JSON values:
+You can also decode TOON back to a JSON value:
 
 ```ocaml
 let toon = {|
@@ -98,12 +98,12 @@ user:
   name: Ada
   tags[2]: reading,gaming
   active: true
-  preferences[0]:
+  preferences: []
 |}
 
 let () =
   match Toon.decode toon with
-  | Ok (value: Yojson.Basic.t) ->
+  | Ok (value : Yojson.Basic.t) ->
       Printf.printf "%s\n" (Yojson.Basic.to_string value)
   | Error error ->
       Printf.eprintf "Decode error: %s\n" (Toon.error_to_string error)
@@ -111,96 +111,77 @@ let () =
 
 ## API
 
-### `Toon.decode : string -> (Yojson.Basic.t, Toon.error) result`
-
-Decodes a TOON-formatted string into a JSON value. Returns `Ok value` on success or `Error error` on decode failure.
-
-```ocaml
-type error =
-  [ `Unterminated_quoted_string
-  | `Expected_quote
-  | `Invalid_escape_sequence
-  | `No_colon_in_line of string
-  | `Invalid_array_syntax
-  | `Array_length_mismatch
-  | `Invalid_number_format ]
-```
-
-```ocaml
-match Toon.decode "tags[3]: a,b,c" with
-| Ok json -> Printf.printf "%s\n" (Yojson.Basic.to_string json)
-| Error error -> Printf.eprintf "Error: %s\n" (Toon.error_to_string error)
-```
-
-### `Toon.encode : ?delimiter:delimiter -> Yojson.Basic.t -> string`
-
-Encodes a JSON value to TOON format. Returns a TOON-formatted string with no trailing newline or spaces.
-
-The optional `~delimiter` parameter specifies the delimiter for arrays (default: `Comma`).
-
 ```ocaml
 type delimiter = Comma | Tab | Pipe
+type error = { line : int; message : string }
+
+val error_to_string : error -> string
+val encode : ?delimiter:delimiter -> ?indent_size:int -> Yojson.Basic.t -> string
+val decode : ?indent_size:int -> ?strict:bool -> string -> (Yojson.Basic.t, error) result
+val pp : Format.formatter -> Yojson.Basic.t -> unit
 ```
 
-```ocaml
-Toon.encode (`Assoc [("id", `Int 1); ("name", `String "Ada")])
-(* => "id: 1\nname: Ada" *)
+- `delimiter` sets the document delimiter. Default: `Comma`.
+- `indent_size` sets the number of spaces per indent level, for `encode` and `decode` alike. Default: `2`.
+- `strict` turns on the checks from spec section 14: array count and width mismatches, duplicate keys, bad indentation, and malformed headers. Default: `true`. With `strict:false`, a duplicate key keeps its last value, and a count or width mismatch no longer stops the decode.
+- `error.line` is the 1-based line of the problem, or `0` when the error is not tied to one line.
 
-(* Using pipe delimiter for arrays with commas in values *)
-Toon.encode ~delimiter:Toon.Pipe (`Assoc [("items", `List [`String "a,b"; `String "c,d"])])
-(* => "items[2|]: a,b|c,d" *)
+### `Toon.encode`
+
+```ocaml
+Toon.encode (`Assoc [ ("id", `Int 123); ("name", `String "Ada"); ("active", `Bool true) ])
+(* => "id: 123\nname: Ada\nactive: true" *)
+
+(* Pipe delimiter, for values that contain a comma *)
+Toon.encode ~delimiter:Toon.Pipe
+  (`Assoc [ ("tags", `List [ `String "reading"; `String "gaming"; `String "coding" ]) ])
+(* => "tags[3|]: reading|gaming|coding" *)
 ```
 
-### `Toon.pp : Format.formatter -> Yojson.Basic.t -> unit`
+Numbers follow spec section 2: an integral float encodes without a decimal point; a number keeps its plain decimal form for magnitudes from 0 up to 1e21 and down to 1e-6; outside that range the encoder may use exponent form; `-0.0` encodes as `0`; `NaN` and the infinities encode as `null`.
 
-Pretty-print TOON format using OCaml's Format module.
-
-```ocaml
-let data = `Assoc [("id", `Int 123); ("name", `String "Ada")]
-let s = Format.asprintf "%a" Toon.pp data
-```
-
-### `Toon.error_to_string : error -> string`
-
-Convert a decode error to a human-readable string.
+### `Toon.decode`
 
 ```ocaml
-match Toon.decode "invalid[" with
+match Toon.decode "tags[3]: reading,gaming,coding" with
+| Ok json -> Printf.printf "%s\n" (Yojson.Basic.to_string json)
+| Error error -> Printf.eprintf "Error: %s\n" (Toon.error_to_string error)
+(* => {"tags":["reading","gaming","coding"]} *)
+
+match Toon.decode "tags[3]: a,b" with
 | Ok _ -> ()
-| Error err ->
-    Printf.eprintf "Decode failed: %s\n" (Toon.error_to_string err)
+| Error { line; message } -> Printf.eprintf "line %d: %s\n" line message
+(* declared length 3, only 2 values given: a strict-mode error *)
+```
+
+A numeric token with no fraction or exponent that fits an OCaml 63-bit `int` decodes as `Int`; every other numeric token decodes as `Float` (spec section 4).
+
+### `Toon.pp`
+
+Pretty-print TOON with OCaml's `Format` module.
+
+```ocaml
+let data = `Assoc [ ("id", `Int 123); ("name", `String "Ada") ]
+let s = Format.asprintf "%a" Toon.pp data
 ```
 
 ## Canonical Formatting Rules
 
-TOON formatting is deterministic and minimal:
+TOON output is deterministic:
 
-- **Indentation**: 2 spaces per nesting level.
-- **Lines**:
-  - `key: value` for primitives (single space after colon).
-  - `key:` for nested/empty objects (no trailing space on that line).
-- **Arrays**:
-  - Delimiter encoding: Comma delimiters are implicit in array headers (e.g., `tags[3]:`, `items[2]{id,name}:`). Tab and pipe delimiters are explicitly shown in array headers (e.g., `tags[3|]:`, `items[2	]{id	name}:`).
-  - Primitive arrays inline: `key[N]: v1,v2` (comma) or `key[N<delim>]: v1<delim>v2` (tab/pipe).
-  - Tabular arrays: `key[N]{f1,f2}: …` (comma) or `key[N<delim>]{f1<delim>f2}: …` (tab/pipe).
-  - List items: two spaces, hyphen, space (`"  - …"`).
-- **Whitespace invariants**:
-  - No trailing spaces at end of any line.
-  - No trailing newline at end of output.
+- Indentation: `indent_size` spaces per level (default 2). No tabs.
+- `key: value` for a primitive field, one space after the colon.
+- `key:` for a nested or empty object, no space after the colon.
+- `key: []` for an empty array. A root empty array is `[]` on its own line. The old `key[0]:` form still decodes, but the encoder no longer writes it.
+- A non-empty array is inline (`key[N]: v1,v2`) or tabular (`key[N]{f1,f2}:` then one row per line).
+- Comma is implicit in headers; tab and pipe are shown (`key[N\t]:`, `key[N|]:`), and carry through to field lists and rows.
+- List items: two spaces, a hyphen, a space (`  - `).
+- No trailing spaces on any line, and no trailing newline at the end of the output.
+- No comment lines in encoder output. A full-line `#` is a decoder-only feature: it is stripped before parsing and never emitted.
 
 ## Format Overview
 
 ### Objects
-
-Simple objects with primitive values:
-
-```ocaml
-Toon.encode (`Assoc [
-  ("id", `Int 123);
-  ("name", `String "Ada");
-  ("active", `Bool true)
-])
-```
 
 ```
 id: 123
@@ -208,16 +189,7 @@ name: Ada
 active: true
 ```
 
-Nested objects:
-
-```ocaml
-Toon.encode (`Assoc [
-  ("user", `Assoc [
-    ("id", `Int 123);
-    ("name", `String "Ada")
-  ])
-])
-```
+Nested objects indent under their key:
 
 ```
 user:
@@ -227,45 +199,56 @@ user:
 
 ### Arrays
 
-> **Tip:** TOON includes the array length in brackets (e.g., `items[3]`). When using comma delimiters (default), the delimiter is implicit. When using tab or pipe delimiters, the delimiter is explicitly shown in the header (e.g., `tags[2|]` or `[2	]`). This encoding helps LLMs identify the delimiter and track the number of elements, reducing errors when generating or validating structured output.
-
-#### Primitive Arrays (Inline)
-
-```ocaml
-Toon.encode (`Assoc [
-  ("tags", `List [`String "admin"; `String "ops"; `String "dev"])
-])
-```
+Primitive arrays are inline:
 
 ```
 tags[3]: admin,ops,dev
 ```
 
-#### Arrays of Objects (Tabular)
-
-When all objects share the same primitive fields, TOON uses an efficient **tabular format**:
-
-```ocaml
-Toon.encode (`Assoc [
-  ("items", `List [
-    `Assoc [
-      ("sku", `String "A1");
-      ("qty", `Int 2);
-      ("price", `Float 9.99)
-    ];
-    `Assoc [
-      ("sku", `String "B2");
-      ("qty", `Int 1);
-      ("price", `Float 14.5)
-    ]
-  ])
-])
-```
+Arrays of objects with the same fields use a tabular header once, then one row per item:
 
 ```
 items[2]{sku,qty,price}:
   A1,2,9.99
   B2,1,14.5
+```
+
+A nested object column, uniform across all items, collapses into a field group in the header so the rows stay flat:
+
+```
+orders[2]{id,customer{name,country},total}:
+  1,Ada,DK,99
+  2,Bob,UK,149
+```
+
+Arrays that mix shapes, or objects with different keys, fall back to a list: one item per line, marked `- `. An object item puts its first field on the hyphen line:
+
+```
+items[2]:
+  - id: 1
+    name: First
+  - id: 2
+    name: Second
+    extra: true
+```
+
+### Objects of uniform objects
+
+An object whose values are all objects with the same keys encodes as a table too, with the entry key as the row label:
+
+```
+users[2:]{age,city}:
+  alice: 30,Berlin
+  bob: 25,Oslo
+```
+
+### Delimiters
+
+Comma is the default and stays out of the header. Tab and pipe are shown in the header, so a reader always knows which one is active:
+
+```
+tags[3	]: reading	gaming	coding
+tags[3|]: reading|gaming|coding
 ```
 
 ## Development
@@ -282,6 +265,8 @@ make bench # run some benchmarks
 make utop # run a repl with the lib loadede
 ```
 
+The test suite runs the official conformance fixtures vendored under `test/fixtures`, from the [TOON spec repository](https://github.com/toon-format/spec).
+
 ## Contributing
 
 1. Fork it (<https://github.com/davesnx/ocaml-toon/fork>)
@@ -296,4 +281,4 @@ The project is available as open source under the terms of the [MIT License](LIC
 
 ## Credits
 
-This is an OCaml port of the original [TOON library](https://github.com/johannschopplich/toon) by [Johann Schopplich](https://github.com/johannschopplich).
+This is an OCaml port of the TOON format and its original TypeScript library, created by [Johann Schopplich](https://github.com/johannschopplich). The specification and reference implementation now live at [toon-format/spec](https://github.com/toon-format/spec) and [toon-format/toon](https://github.com/toon-format/toon).
