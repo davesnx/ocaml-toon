@@ -21,6 +21,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  DUNE_CONFIG__PKG_BUILD_PROGRESS: enabled
+
 jobs:
   build-and-test:
     strategy:
@@ -46,6 +49,12 @@ jobs:
       # building from the committed dune.lock keeps that restored _build valid.
       - name: Use dune
         uses: ocaml-dune/setup-dune@v1
+
+      - name: Show restored cache state
+        run: |
+          du -sh ~/.cache/dune/* _build 2>/dev/null || true
+          ls ~/.cache/dune/toolchains 2>/dev/null || echo "no toolchains dir"
+          ls _build/_private/default/.pkg 2>/dev/null | head -40 || echo "no restored .pkg dir"
 
       - name: Build
         run: dune build
