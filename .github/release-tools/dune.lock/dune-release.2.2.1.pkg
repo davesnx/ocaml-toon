@@ -1,0 +1,35 @@
+(version 2.2.1)
+
+(build
+ (all_platforms
+  ((action
+    (progn
+     (when %{pkg-self:dev} (run dune subst))
+     (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
+
+(depends
+ (all_platforms
+  (ocaml
+   dune
+   curly
+   fmt
+   fpath
+   bos
+   cmdliner
+   re
+   astring
+   opam-file-format
+   opam-format
+   opam-state
+   opam-core
+   rresult
+   logs
+   odoc
+   yojson)))
+
+(source
+ (fetch
+  (url
+   https://github.com/tarides/dune-release/releases/download/2.2.1/dune-release-2.2.1.tbz)
+  (checksum
+   sha512=511f3898d56587c9a6e764a83cee97967679f77e7ec82a469298f01921eb39124c90de11665bc233a2533d92a03527220c030632351e67cc46d0c15caa933d9d)))

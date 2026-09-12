@@ -1,0 +1,15 @@
+(version 1.5.0)
+
+(build
+ (all_platforms ((action (run dune build -p %{pkg-self:name} -j %{jobs})))))
+
+(depends
+ (all_platforms
+  (ocaml dune)))
+
+(source
+ (fetch
+  (url
+   https://github.com/kit-ty-kate/spdx_licenses/releases/download/v1.5.0/spdx_licenses-1.5.0.tar.gz)
+  (checksum
+   sha512=6d86133c2d668521b8f2ed2984dd2574e00cfe91bff63628dfad3ffacc47c7000a9e7a63d5e250be30568ff75680215ff37fca61b6dbd3890fa382a72615482c)))
