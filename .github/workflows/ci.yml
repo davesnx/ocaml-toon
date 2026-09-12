@@ -21,9 +21,6 @@ permissions:
   contents: write
   pull-requests: write
 
-env:
-  DUNE_CONFIG__PKG_BUILD_PROGRESS: enabled
-
 jobs:
   build-and-test:
     strategy:
@@ -45,16 +42,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      # setup-dune restores ~/.cache/dune and _build from the previous run;
-      # building from the committed dune.lock keeps that restored _build valid.
+      # setup-dune restores ~/.cache/dune (toolchain, shared cache) but its
+      # _build entry never restores, so cache the dependency builds here.
+      # Building from the committed dune.lock keeps the restored _build valid.
       - name: Use dune
         uses: ocaml-dune/setup-dune@v1
 
-      - name: Show restored cache state
-        run: |
-          du -sh ~/.cache/dune/* _build 2>/dev/null || true
-          ls ~/.cache/dune/toolchains 2>/dev/null || echo "no toolchains dir"
-          ls _build/_private/default/.pkg 2>/dev/null | head -40 || echo "no restored .pkg dir"
+      - name: Cache _build
+        uses: actions/cache@v5
+        with:
+          path: _build
+          key: build-${{ runner.os }}-${{ hashFiles('dune.lock/**') }}
 
       - name: Build
         run: dune build
