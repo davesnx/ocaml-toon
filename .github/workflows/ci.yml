@@ -4,9 +4,22 @@ on:
   push:
     branches:
       - main
+    tags:
+      - '*'
   pull_request:
     branches:
       - main
+  # Run from a tag in the Actions UI to test or redo a release.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Validate the release without publishing'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   build-and-test:
@@ -26,6 +39,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use dune
         uses: ocaml-dune/setup-dune@v1
@@ -39,28 +54,43 @@ jobs:
       - name: Run tests
         run: dune runtest
 
-  opam-lint:
-    runs-on: ubuntu-latest
+      # Release tooling, ubuntu only. dune-release is built with dune package
+      # management from .github/release-tools. opam is needed only as a binary
+      # because dune-release-action runs `opam exec -- dune-release`.
+      - name: Build dune-release
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          dune build --root .github/release-tools @pkg-install
+          dirname "$(find .github/release-tools/_build/_private -type f -name dune-release -path '*/target/bin/*')" >> "$GITHUB_PATH"
 
-    env:
-      OPAMYES: 1
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Use OCaml
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: 5.4.0
-
-      - name: Install dependencies
-        run: opam install . --deps-only --with-test
-
-      - name: Install dune-release
-        run: opam install dune-release
+      - name: Install opam binary
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends opam
+          opam init --bare -n --disable-sandboxing
+          opam switch create default --empty
 
       - name: Lint release metadata
+        if: matrix.os == 'ubuntu-latest'
         uses: davesnx/dune-release-action/lint@v0.5.0
         with:
           packages: toon
+
+      # dune-release rebuilds the archive with `dune build -p`, which disables
+      # dune package management, so expose the toolchain and the locked
+      # libraries that `dune build` already produced above.
+      - name: Expose the dune toolchain to dune-release
+        if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          dirname "$(find ~/.cache/dune/toolchains "$PWD/_build/_private" -name ocamlc -path '*/target/bin/*' 2>/dev/null | head -1)" >> "$GITHUB_PATH"
+          echo "OCAMLPATH=$(find "$PWD/_build/_private/default/.pkg" -mindepth 2 -maxdepth 3 -type d -path '*/target/lib' | tr '\n' ':' | sed 's/:$//')" >> "$GITHUB_ENV"
+
+      - name: Release to GitHub and opam
+        if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/')
+        uses: davesnx/dune-release-action@v0.5.0
+        with:
+          packages: toon
+          changelog: ./CHANGES.md
+          github-token: ${{ secrets.GH_TOKEN }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}

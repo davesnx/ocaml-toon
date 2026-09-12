@@ -1,0 +1,18 @@
+(version 3.2.1)
+
+(build
+ (all_platforms
+  ((action
+    (progn
+     (when %{pkg-self:dev} (run dune subst))
+     (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
+
+(depends
+ (all_platforms
+  (odoc-parser astring cmdliner cppo dune fpath ocaml tyxml fmt crunch)))
+
+(source
+ (fetch
+  (url https://github.com/ocaml/odoc/releases/download/3.2.1/odoc-3.2.1.tbz)
+  (checksum
+   sha512=3555386b4770a7caa8ec903683bde5ecdc41d5e57ffaee617d5da225c747bbd1e9c1d2677f4df97e96bbdfc69f580ea83b1b92b933ea40a436a658788b677bbc)))

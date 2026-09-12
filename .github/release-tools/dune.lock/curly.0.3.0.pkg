@@ -1,0 +1,19 @@
+(version 0.3.0)
+
+(build
+ (all_platforms
+  ((action
+    (progn
+     (when %{pkg-self:dev} (run dune subst))
+     (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
+
+(depends
+ (all_platforms
+  (dune ocaml base-unix result)))
+
+(source
+ (fetch
+  (url
+   https://github.com/rgrinberg/curly/releases/download/0.3.0/curly-0.3.0.tbz)
+  (checksum
+   sha512=a8313c902f96a352fb5f592b0b4d2dbd72efcd92a688c812350be5561442d418b64ab0325e2ffe181385268224dc51a66107451a11b59e45a50e38827b9a9912)))

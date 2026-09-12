@@ -1,0 +1,19 @@
+(version 5.0.0)
+
+(build
+ (all_platforms
+  ((action
+    (progn
+     (when %{pkg-self:dev} (run dune subst))
+     (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
+
+(depends
+ (all_platforms
+  (dune ocaml re uutf seq)))
+
+(source
+ (fetch
+  (url
+   https://github.com/ocsigen/tyxml/releases/download/5.0.0/tyxml-5.0.0.tbz)
+  (checksum
+   sha512=61881aa7101b5072b887802e78897920516c9c2b484d51ac281509e83c79969c7654caa31b125ad843b45740dfe143ed5218fd7e4d98dfba8e0b24b272308ed6)))
