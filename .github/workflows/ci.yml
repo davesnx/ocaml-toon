@@ -45,6 +45,15 @@ jobs:
       - name: Use dune
         uses: ocaml-dune/setup-dune@v1
 
+      # Toolchain, shared build cache, and the opam-repository mirror.
+      - name: Cache dune
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/dune
+          key: dune-${{ runner.os }}-${{ hashFiles('dune.lock/**', '.github/release-tools/dune.lock/**') }}
+          restore-keys: |
+            dune-${{ runner.os }}-
+
       - name: Lock dependencies
         run: dune pkg lock
 

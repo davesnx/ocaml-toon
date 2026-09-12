@@ -70,3 +70,8 @@ bench-watch: ## Run benchmarks in watch mode
 .PHONY: subst
 subst: ## Run dune substitute (for version strings)
 	@dune subst
+
+.PHONY: release-lint
+release-lint: ## Lint the release metadata with dune-release (built via dune pkg)
+	@dune build --root .github/release-tools @pkg-install
+	@dune exec --root .github/release-tools -- dune-release lint -p toon
