@@ -42,20 +42,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      # setup-dune restores ~/.cache/dune and _build from the previous run;
+      # building from the committed dune.lock keeps that restored _build valid.
       - name: Use dune
         uses: ocaml-dune/setup-dune@v1
-
-      # Toolchain, shared build cache, and the opam-repository mirror.
-      - name: Cache dune
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/dune
-          key: dune-${{ runner.os }}-${{ hashFiles('dune.lock/**', '.github/release-tools/dune.lock/**') }}
-          restore-keys: |
-            dune-${{ runner.os }}-
-
-      - name: Lock dependencies
-        run: dune pkg lock
 
       - name: Build
         run: dune build
@@ -66,6 +56,13 @@ jobs:
       # Release tooling, ubuntu only. dune-release is built with dune package
       # management from .github/release-tools. opam is needed only as a binary
       # because dune-release-action runs `opam exec -- dune-release`.
+      - name: Cache the dune-release build
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@v5
+        with:
+          path: .github/release-tools/_build
+          key: release-tools-${{ runner.os }}-${{ hashFiles('.github/release-tools/dune.lock/**') }}
+
       - name: Build dune-release
         if: matrix.os == 'ubuntu-latest'
         run: |
